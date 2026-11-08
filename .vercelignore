@@ -1,0 +1,6 @@
+data/
+scripts/
+server/index.sqlite.bak
+*.db
+*.db-wal
+*.db-shm
