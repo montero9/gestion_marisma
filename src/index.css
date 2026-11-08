@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* Evitar scroll chaining / encadenamiento de scroll en ventanas modales y overlays */
+.modal-overlay,
+[role="dialog"],
+.fixed.inset-0 {
+  overscroll-behavior: contain;
+}
+
+/* Reglas oficiales de impresión para fichas y documentos municipales */
+@media print {
+  /* Ocultar elementos de interfaz no imprimibles */
+  header,
+  footer,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset del fondo y márgenes */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Evitar repetición o scroll del modal al imprimir */
+  .fixed.inset-0 {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .bg-white.rounded-2xl.shadow-2xl {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  .overflow-y-auto {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Control de saltos de página para que quepa en 1 sola página siempre que sea posible */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 12mm 15mm;
+  }
+
+  /* Evitar saltos de página partidos en tablas o cajas */
+  .border,
+  .rounded-xl,
+  table,
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+

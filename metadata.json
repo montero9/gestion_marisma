@@ -1,0 +1,6 @@
+{
+  "name": "Control Marisma de Hinojos - Gestión Ganadera",
+  "description": "Sistema de gestión ganadera y adjudicación de plazas para la Marisma de Hinojos: equinos, bovinos, rastras, sementales, propietarios y control de entradas/salidas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

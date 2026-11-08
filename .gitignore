@@ -1,0 +1,38 @@
+# Archivos de entorno con credenciales o secretos
+.env
+.env.local
+.env.*.local
+
+# Base de datos SQLite y archivos temporales de WAL
+data/*.db
+data/*.db-wal
+data/*.db-shm
+!data/.gitkeep
+
+# Directorio de subidas de usuarios (PDFs y fotos)
+uploads/documents/*
+!uploads/documents/.gitkeep
+
+# Dependencias y compilados
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs del sistema
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Archivos del sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
