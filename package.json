@@ -7,7 +7,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "server": "tsx server/dev.ts",
     "start": "tsx server/dev.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --outfile=api/index.js --external:@supabase/supabase-js --external:express --external:cors --external:dotenv --external:jszip --external:multer",
+    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --outfile=api/index.js && esbuild server/index.ts --bundle --platform=node --format=esm --outfile=api/[...all].js",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
