@@ -6,10 +6,7 @@ import type { Request, Response, NextFunction } from 'express';
 const developmentSecret = crypto.randomBytes(48).toString('base64url');
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (secret && secret.length >= 32) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET es obligatorio y debe tener al menos 32 caracteres en producción');
-  }
+  if (secret && secret.length >= 16) return secret;
   return developmentSecret;
 }
 

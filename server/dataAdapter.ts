@@ -15,7 +15,7 @@ import {
   mapMovementRow,
   mapUserRow,
   mapAuditLogRow,
-} from './db.js';
+} from './mappers.js';
 
 export const dataAdapter = {
   // 1. USUARIOS

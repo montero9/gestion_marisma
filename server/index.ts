@@ -1079,7 +1079,7 @@ app.get('/api/export/bovinos-ods', async (req: AuthenticatedRequest, res) => {
 // ==========================================
 // ARRANQUE LOCAL DEL SERVIDOR
 // ==========================================
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.listen(PORT, () => {
     console.log(`🚀 Servidor Marisma de Hinojos (Supabase) ejecutándose en http://localhost:${PORT}`);
   });
