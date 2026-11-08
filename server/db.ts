@@ -32,19 +32,35 @@ export const DATA_DIR = path.resolve(__dirname, '..', 'data');
 export const UPLOADS_DIR = path.resolve(__dirname, '..', 'uploads');
 export const DOCUMENTS_DIR = path.resolve(UPLOADS_DIR, 'documents');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-if (!fs.existsSync(DOCUMENTS_DIR)) {
-  fs.mkdirSync(DOCUMENTS_DIR, { recursive: true });
-}
-
 export const DB_PATH = path.join(DATA_DIR, 'marisma.db');
-export const db = new DatabaseSync(DB_PATH);
 
-// Configuración WAL para alto rendimiento y concurrencia
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
+let dbInstance: any = null;
+export function getDb() {
+  if (!dbInstance) {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      dbInstance = new DatabaseSync(DB_PATH);
+      dbInstance.exec('PRAGMA journal_mode = WAL;');
+      dbInstance.exec('PRAGMA foreign_keys = ON;');
+    } catch {
+      // Entorno Vercel Serverless (solo lectura), se ignora SQLite
+    }
+  }
+  return dbInstance;
+}
+
+export const db: any = new Proxy({}, {
+  get(_target, prop) {
+    const instance = getDb();
+    if (!instance) {
+      return () => ({ all: () => [], get: () => null, run: () => ({}) });
+    }
+    const val = instance[prop];
+    return typeof val === 'function' ? val.bind(instance) : val;
+  }
+});
 
 // Inicialización del esquema de tablas relacionales
 export function initDatabase() {
