@@ -2314,11 +2314,6 @@ app.get("/api/export/bovinos-ods", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.LAMBDA_TASK_ROOT && process.env.NODE_ENV !== "production") {
-  app.listen(PORT, () => {
-    console.log(`\u{1F680} Servidor Marisma de Hinojos (Supabase) ejecut\xE1ndose en http://localhost:${PORT}`);
-  });
-}
 var index_default = app;
 export {
   index_default as default
