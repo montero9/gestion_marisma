@@ -802,7 +802,7 @@ app.get('/api/auth/me', async (req: AuthenticatedRequest, res) => {
   try {
     const user = await dataAdapter.getUserById(req.user!.id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json({
+    const authUser = {
       id: user.id,
       username: user.username,
       nombreCompleto: user.nombre_completo,
@@ -812,6 +812,10 @@ app.get('/api/auth/me', async (req: AuthenticatedRequest, res) => {
       avatarInitials: user.avatar_initials || '',
       activo: Boolean(user.activo),
       campanaActiva: user.campana_activa || '2025-2026',
+    };
+    res.json({
+      user: authUser,
+      ...authUser,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

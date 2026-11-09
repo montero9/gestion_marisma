@@ -103,15 +103,27 @@ export default function App() {
       if (token && savedUser) {
         try {
           const authRes = await ApiService.getMe();
-          setCurrentUser(authRes.user);
-          ApiService.setCurrentUser(authRes.user);
-          if (authRes.user.campanaActiva && data.campaigns.includes(authRes.user.campanaActiva)) {
-            effectiveActiveCamp = authRes.user.campanaActiva;
+          const validUser = (authRes as any)?.user || authRes;
+          if (validUser && validUser.id) {
+            setCurrentUser(validUser);
+            ApiService.setCurrentUser(validUser);
+            if (validUser.campanaActiva && data.campaigns.includes(validUser.campanaActiva)) {
+              effectiveActiveCamp = validUser.campanaActiva;
+            }
+          } else {
+            setCurrentUser(savedUser);
           }
-        } catch {
-          // Token inválido o expirado
-          await ApiService.logout();
-          setCurrentUser(null);
+        } catch (authErr: any) {
+          console.warn('Error verificando sesión con el servidor:', authErr);
+          const status = authErr?.status;
+          if (status === 401 || status === 403) {
+            // Token definitivamente inválido o revocado
+            await ApiService.logout();
+            setCurrentUser(null);
+          } else {
+            // Error de conexión o transitorio: mantener la sesión local guardada
+            setCurrentUser(savedUser);
+          }
         }
       } else {
         // No hay sesión activa o falta token: limpiar por completo
