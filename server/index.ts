@@ -668,12 +668,26 @@ app.get('/api/campaigns', async (_req, res) => {
 
 app.post('/api/campaigns', async (req: AuthenticatedRequest, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, cloneFromCampaign, selectedOwners, selectedAnimals, setActiveImmediately } = req.body;
     if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    await dataAdapter.saveCampaign(nombre.trim(), 0);
-    await auditLog(req, 'NUEVA_CAMPANA', 'CAMPANA', nombre.trim(), {});
-    res.status(201).json({ success: true, nombre: nombre.trim() });
+
+    const result = await dataAdapter.createCampaignWithMigration({
+      nombre: nombre.trim(),
+      cloneFromCampaign,
+      selectedOwners,
+      selectedAnimals,
+      setActiveImmediately,
+    });
+
+    await auditLog(req, 'NUEVA_CAMPANA', 'CAMPANA', nombre.trim(), {
+      origen: cloneFromCampaign || 'Nueva desde cero',
+      totalAnimales: result.animalsCount,
+      totalPropietarios: result.ownersCount,
+    });
+
+    res.status(201).json(result);
   } catch (error: any) {
+    console.error('Error en POST /api/campaigns:', error);
     res.status(500).json({ error: error.message });
   }
 });

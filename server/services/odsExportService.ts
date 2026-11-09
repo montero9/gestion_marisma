@@ -3,9 +3,38 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 import { Animal, Stallion, Movement, Owner, Rastra } from '../../src/types/marisma';
+import { PLANTILLA_EQUINO_BASE64, PLANTILLA_BOVINO_BASE64 } from '../templates/embeddedTemplates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function getEquinoTemplateBuffer(): Buffer {
+  const candidatePaths = [
+    path.resolve(__dirname, '../templates/plantilla_equino.ods'),
+    path.resolve(process.cwd(), 'server/templates/plantilla_equino.ods'),
+    path.resolve(process.cwd(), 'templates/plantilla_equino.ods'),
+  ];
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p);
+    }
+  }
+  return Buffer.from(PLANTILLA_EQUINO_BASE64, 'base64');
+}
+
+function getBovinoTemplateBuffer(): Buffer {
+  const candidatePaths = [
+    path.resolve(__dirname, '../templates/plantilla_bovino.ods'),
+    path.resolve(process.cwd(), 'server/templates/plantilla_bovino.ods'),
+    path.resolve(process.cwd(), 'templates/plantilla_bovino.ods'),
+  ];
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p);
+    }
+  }
+  return Buffer.from(PLANTILLA_BOVINO_BASE64, 'base64');
+}
 
 // Helper to escape XML special characters
 function escapeXml(str: any): string {
@@ -196,12 +225,7 @@ export class OdsExportService {
   public static async generateEquinosWorkbook(options: GenerateOdsOptions): Promise<Buffer> {
     const { campaign, animals, stallions, movements, owners } = options;
 
-    const templatePath = path.resolve(__dirname, '../templates/plantilla_equino.ods');
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`No se encontró la plantilla ODS en: ${templatePath}`);
-    }
-
-    const templateBuffer = fs.readFileSync(templatePath);
+    const templateBuffer = getEquinoTemplateBuffer();
     const zip = await JSZip.loadAsync(templateBuffer);
 
     let contentXml = await zip.file('content.xml')!.async('string');
@@ -288,12 +312,7 @@ export class OdsExportService {
   public static async generateBovinosWorkbook(options: GenerateBovinosOdsOptions): Promise<Buffer> {
     const { campaign, animals, owners } = options;
 
-    const templatePath = path.resolve(__dirname, '../templates/plantilla_bovino.ods');
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`No se encontró la plantilla ODS de bovino en: ${templatePath}`);
-    }
-
-    const templateBuffer = fs.readFileSync(templatePath);
+    const templateBuffer = getBovinoTemplateBuffer();
     const zip = await JSZip.loadAsync(templateBuffer);
 
     let contentXml = await zip.file('content.xml')!.async('string');

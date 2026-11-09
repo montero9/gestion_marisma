@@ -129,6 +129,185 @@ export const dataAdapter = {
     if (error) throw error;
   },
 
+  async createCampaignWithMigration(params: {
+    nombre: string;
+    cloneFromCampaign?: string;
+    selectedOwners?: Owner[];
+    selectedAnimals?: any[];
+    setActiveImmediately?: boolean;
+  }) {
+    const { nombre, cloneFromCampaign, selectedOwners, selectedAnimals, setActiveImmediately } = params;
+
+    // 1. Guardar la campaña en la tabla campaigns
+    await this.saveCampaign(nombre, setActiveImmediately !== false ? 1 : 0);
+
+    // 2. Traspasar propietarios / ganaderos
+    let ownersToInsert: any[] = [];
+    if (Array.isArray(selectedOwners) && selectedOwners.length > 0) {
+      ownersToInsert = selectedOwners.map((ow) => ({
+        id: `own-${Date.now()}-${Math.round(Math.random() * 1000000)}`,
+        campana: nombre,
+        nombre_completo: ow.nombreCompleto,
+        dni_cif: ow.dniCif,
+        telefono: ow.telefono || '',
+        email: ow.email || '',
+        direccion: ow.direccion || '',
+        municipio: ow.municipio || 'Hinojos',
+        codigo_rega: ow.codigoRega || '',
+        asociacion: ow.asociacion || '',
+        notas: ow.notas || '',
+      }));
+    } else if (cloneFromCampaign) {
+      const sourceOwners = await this.getOwners(cloneFromCampaign);
+      ownersToInsert = sourceOwners.map((ow) => ({
+        id: `own-${Date.now()}-${Math.round(Math.random() * 1000000)}`,
+        campana: nombre,
+        nombre_completo: ow.nombreCompleto,
+        dni_cif: ow.dniCif,
+        telefono: ow.telefono || '',
+        email: ow.email || '',
+        direccion: ow.direccion || '',
+        municipio: ow.municipio || 'Hinojos',
+        codigo_rega: ow.codigoRega || '',
+        asociacion: ow.asociacion || '',
+        notas: ow.notas || '',
+      }));
+    }
+
+    if (ownersToInsert.length > 0) {
+      for (let i = 0; i < ownersToInsert.length; i += 50) {
+        const batch = ownersToInsert.slice(i, i + 50);
+        const { error } = await supabase.from('owners').insert(batch);
+        if (error) throw error;
+      }
+    }
+
+    // 3. Traspasar animales
+    let animalsToProcess: any[] = [];
+    if (Array.isArray(selectedAnimals) && selectedAnimals.length > 0) {
+      animalsToProcess = selectedAnimals;
+    } else if (cloneFromCampaign) {
+      animalsToProcess = await this.getAnimals(cloneFromCampaign);
+    }
+
+    const animalsToInsert: any[] = [];
+    const stallionsToInsert: any[] = [];
+
+    if (animalsToProcess.length > 0) {
+      // Ordenación según criterios oficiales municipales:
+      // 1º Agrupados por especie (EQUINO antes que BOVINO)
+      // 2º Alfabéticamente por el nombre del ganadero titular
+      // 3º Por número de plaza / nombre
+      const sortedAnimals = [...animalsToProcess].sort((a, b) => {
+        if (a.tipo !== b.tipo) return a.tipo === 'EQUINO' ? -1 : 1;
+        const propA = (a.propietario || '').trim();
+        const propB = (b.propietario || '').trim();
+        const compOwner = propA.localeCompare(propB, 'es', { sensitivity: 'base' });
+        if (compOwner !== 0) return compOwner;
+        const numA = parseInt((String(a.plazaNumero || '').match(/\d+/) || ['0'])[0], 10);
+        const numB = parseInt((String(b.plazaNumero || '').match(/\d+/) || ['0'])[0], 10);
+        if (numA !== numB) return numA - numB;
+        return (a.nombreAnimal || '').localeCompare(b.nombreAnimal || '', 'es', { sensitivity: 'base' });
+      });
+
+      let nextEquinoPlaza = 1;
+      let nextBovinoPlaza = 1;
+
+      for (const an of sortedAnimals) {
+        const newId = `anm-${Date.now()}-${Math.round(Math.random() * 10000000)}`;
+        const prefix = an.tipo === 'BOVINO' ? 'HIN' : 'HI';
+        const plazaIndex = an.tipo === 'BOVINO' ? nextBovinoPlaza++ : nextEquinoPlaza++;
+        const targetPlaza = `${prefix}${String(plazaIndex).padStart(3, '0')}`;
+
+        const rastraVal =
+          an.mantenerRastra && an.rastra
+            ? typeof an.rastra === 'string'
+              ? an.rastra
+              : JSON.stringify(an.rastra)
+            : null;
+        const docsVal = an.documentos
+          ? typeof an.documentos === 'string'
+            ? an.documentos
+            : JSON.stringify(an.documentos)
+          : JSON.stringify([]);
+
+        animalsToInsert.push({
+          id: newId,
+          tipo: an.tipo,
+          campana: nombre,
+          plaza_numero: targetPlaza,
+          propietario: an.propietario,
+          finca: an.finca || 'HINOJOS',
+          identificacion1: an.identificacion1 || '',
+          identificacion2: an.identificacion2 || '',
+          nombre_animal: an.tipo === 'BOVINO' ? '' : (an.nombreAnimal || ''),
+          sexo: an.sexo || 'H',
+          fecha_nacimiento: an.fechaNacimiento || '',
+          capa: an.capa || 'TORDO',
+          fecha_ultima_revision: null,
+          estado_presencia: an.estadoPresencia || 'DENTRO',
+          fecha_entrada_marisma: an.fechaEntradaMarisma || null,
+          fecha_salida_marisma: null,
+          es_semental: an.esSemental ? 1 : 0,
+          es_plaza_vacante: an.esPlazaVacante ? 1 : 0,
+          animal_anterior_id: an.sourceAnimalId || an.id || null,
+          rastra_json: rastraVal,
+          documentos_json: docsVal,
+          anotaciones_json: JSON.stringify([]),
+          creado_en: new Date().toISOString(),
+          actualizado_en: new Date().toISOString(),
+        });
+
+        if (an.esSemental) {
+          stallionsToInsert.push({
+            id: `stl-${Date.now()}-${Math.round(Math.random() * 1000000)}`,
+            campana: nombre,
+            tipo: an.tipo,
+            nombre: an.nombreAnimal || 'SEMENTAL',
+            plaza_numero: targetPlaza,
+            identificacion_chip: an.identificacion1 || '',
+            ueln: an.identificacion2 || '',
+            propietario: an.propietario,
+            fecha_nacimiento: an.fechaNacimiento || '',
+            capa: an.capa || '',
+            estado_aprobacion: 'AUTORIZADO',
+            numero_yeguas_cubiertas: 0,
+            zona_marisma: '',
+            observaciones: 'RENOVACIÓN CAMPAÑA',
+          });
+        }
+      }
+
+      if (animalsToInsert.length > 0) {
+        for (let i = 0; i < animalsToInsert.length; i += 50) {
+          const batch = animalsToInsert.slice(i, i + 50);
+          const { error } = await supabase.from('animals').insert(batch);
+          if (error) throw error;
+        }
+      }
+
+      if (stallionsToInsert.length > 0) {
+        for (let i = 0; i < stallionsToInsert.length; i += 50) {
+          const batch = stallionsToInsert.slice(i, i + 50);
+          const { error } = await supabase.from('stallions').insert(batch);
+          if (error) throw error;
+        }
+      }
+    }
+
+    // 4. Activar inmediatamente si procede
+    if (setActiveImmediately !== false) {
+      await this.setSetting('active_campaign', nombre);
+    }
+
+    return {
+      success: true,
+      activeCampaign: nombre,
+      ownersCount: ownersToInsert.length,
+      animalsCount: animalsToInsert.length,
+    };
+  },
+
   async deleteCampaign(nombre: string) {
     const { error } = await supabase.from('campaigns').delete().eq('nombre', nombre);
     if (error) throw error;

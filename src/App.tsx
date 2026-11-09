@@ -177,6 +177,11 @@ export default function App() {
   ) => {
     try {
       await ApiService.addCampaign(campana, cloneFrom, selectedOwners, selectedAnimals, setActiveImmediately);
+      if (setActiveImmediately) {
+        try {
+          await ApiService.setUserActiveCampaign(campana);
+        } catch {}
+      }
       await loadAllData(false);
       if (setActiveImmediately) {
         setActiveCampaign(campana);
