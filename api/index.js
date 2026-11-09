@@ -1,3 +1,4 @@
+import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -62363,9 +62364,12 @@ app.get("/api/export/bovinos-ods", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-var index_default = app;
+function handler(req, res) {
+  return app(req, res);
+}
 export {
-  index_default as default
+  app,
+  handler as default
 };
 /*! Bundled license information:
 

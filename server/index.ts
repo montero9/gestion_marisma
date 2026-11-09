@@ -1076,4 +1076,8 @@ app.get('/api/export/bovinos-ods', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-export default app;
+export { app };
+export default function handler(req: any, res: any) {
+  return app(req, res);
+}
+
