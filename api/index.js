@@ -60970,7 +60970,8 @@ if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 20 and b
 
 // server/supabaseClient.ts
 var SUPABASE_URL = process.env.SUPABASE_URL || "https://gowdixuenmfmvxdnlgpw.supabase.co";
-var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "sb_secret_7p0L0wIkWojx_BezjZSciQ_OQh1trI1";
+var VALID_FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdvd2RpeHVlbm1mbXZ4ZG5sZ3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjEzMTQsImV4cCI6MjEwOTczNzMxNH0.OKyfXwgLhvZWPBEfbN7rZ-KwklxVQOzkMjglPMlNYvw";
+var SUPABASE_KEY = process.env.SUPABASE_ANON_KEY && process.env.SUPABASE_ANON_KEY.startsWith("eyJ") ? process.env.SUPABASE_ANON_KEY : process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.startsWith("eyJ") ? process.env.SUPABASE_SERVICE_ROLE_KEY : VALID_FALLBACK_KEY;
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn("[SUPABASE] ADVERTENCIA: SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no est\xE1n configurados.");
 }
@@ -61510,9 +61511,10 @@ var app = (0, import_express.default)();
 var PORT = process.env.PORT || 3001;
 app.disable("x-powered-by");
 app.use((req, res, next) => {
-  const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
-  if (process.env.NODE_ENV === "production" && !isHttps) {
-    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  const proto = req.headers["x-forwarded-proto"];
+  const host = req.headers.host;
+  if (process.env.NODE_ENV === "production" && proto === "http" && host) {
+    return res.redirect(301, `https://${host}${req.url}`);
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");

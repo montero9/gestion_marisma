@@ -35,9 +35,11 @@ const PORT = process.env.PORT || 3001;
 app.disable('x-powered-by');
 
 app.use((req, res, next) => {
-  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  if (process.env.NODE_ENV === 'production' && !isHttps) {
-    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  // En Vercel / Cloudflare el proxy maneja HTTPS en el Edge. Evitar llamar a req.secure directamente.
+  const proto = req.headers['x-forwarded-proto'];
+  const host = req.headers.host;
+  if (process.env.NODE_ENV === 'production' && proto === 'http' && host) {
+    return res.redirect(301, `https://${host}${req.url}`);
   }
 
   res.setHeader('X-Content-Type-Options', 'nosniff');
