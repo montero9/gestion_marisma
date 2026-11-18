@@ -51824,7 +51824,7 @@ var require_main4 = __commonJS({
 var import_express = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_multer = __toESM(require_multer(), 1);
-var import_dotenv = __toESM(require_main(), 1);
+var import_dotenv2 = __toESM(require_main(), 1);
 var import_jszip2 = __toESM(require_lib7(), 1);
 
 // server/services/odsExportService.ts
@@ -60993,6 +60993,8 @@ function shouldShowDeprecationWarning() {
 if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 20 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 22 or later. For more information, visit: https://github.com/orgs/supabase/discussions/45715");
 
 // server/supabaseClient.ts
+var import_dotenv = __toESM(require_main(), 1);
+import_dotenv.default.config();
 var SUPABASE_URL = process.env.SUPABASE_URL || "https://gowdixuenmfmvxdnlgpw.supabase.co";
 var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -61669,7 +61671,7 @@ function requireAdmin(req, res, next) {
 }
 
 // server/index.ts
-import_dotenv.default.config();
+import_dotenv2.default.config();
 var app = (0, import_express.default)();
 var PORT = process.env.PORT || 3001;
 app.disable("x-powered-by");
