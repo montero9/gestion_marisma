@@ -60994,10 +60994,9 @@ if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 20 and b
 
 // server/supabaseClient.ts
 var SUPABASE_URL = process.env.SUPABASE_URL || "https://gowdixuenmfmvxdnlgpw.supabase.co";
-var VALID_FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdvd2RpeHVlbm1mbXZ4ZG5sZ3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjEzMTQsImV4cCI6MjEwOTczNzMxNH0.OKyfXwgLhvZWPBEfbN7rZ-KwklxVQOzkMjglPMlNYvw";
-var SUPABASE_KEY = process.env.SUPABASE_ANON_KEY && process.env.SUPABASE_ANON_KEY.startsWith("eyJ") ? process.env.SUPABASE_ANON_KEY : process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.startsWith("eyJ") ? process.env.SUPABASE_SERVICE_ROLE_KEY : VALID_FALLBACK_KEY;
+var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.warn("[SUPABASE] ADVERTENCIA: SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no est\xE1n configurados.");
+  console.warn("[SUPABASE] ADVERTENCIA: SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no est\xE1n configurados en el entorno.");
 }
 var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {

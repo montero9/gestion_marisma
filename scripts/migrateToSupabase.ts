@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gowdixuenmfmvxdnlgpw.supabase.co';
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || 'sb_secret_7p0L0wIkWojx_BezjZSciQ_OQh1trI1';
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
 
 const dbPath = path.resolve(__dirname, '..', 'data', 'marisma.db');
 const db = new DatabaseSync(dbPath);
