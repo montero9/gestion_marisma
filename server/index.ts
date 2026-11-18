@@ -260,11 +260,13 @@ app.delete('/api/animals/:id', async (req: AuthenticatedRequest, res) => {
     const animal = await dataAdapter.getAnimalById(req.params.id);
     await dataAdapter.deleteAnimal(req.params.id);
     if (animal) {
+      const docCount = (animal.documentos || []).length;
       await auditLog(req, 'BAJA', 'ANIMAL', animal.plazaNumero || animal.id, {
         tipo: animal.tipo,
         plaza: animal.plazaNumero,
         nombre: animal.nombreAnimal,
         titular: animal.propietario,
+        archivosEliminados: docCount,
       });
     }
     res.json({ success: true, id: req.params.id });

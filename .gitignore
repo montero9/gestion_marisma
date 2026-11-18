@@ -38,3 +38,6 @@ Thumbs.db
 *.sw?
 
 .vercel/
+
+.chrome-data/
+test_app.png

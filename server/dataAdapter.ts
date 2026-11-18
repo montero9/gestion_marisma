@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { supabase, DOCUMENTS_BUCKET } from './supabaseClient.js';
 import {
   Animal,
@@ -410,6 +412,56 @@ export const dataAdapter = {
   },
 
   async deleteAnimal(id: string) {
+    try {
+      // 1. Obtener los datos del animal para localizar todos sus documentos
+      const animal = await this.getAnimalById(id);
+      const filesToDelete = new Set<string>();
+
+      if (animal && Array.isArray(animal.documentos)) {
+        for (const doc of animal.documentos) {
+          if (doc?.url) {
+            const clean = doc.url.replace('/uploads/documents/', '').trim();
+            if (clean) filesToDelete.add(clean);
+          }
+        }
+      }
+
+      // 2. Localizar por prefijo `${id}_` cualquier archivo en Supabase Storage
+      try {
+        const { data: matchedFiles } = await supabase.storage
+          .from(DOCUMENTS_BUCKET)
+          .list('', { search: id });
+        if (Array.isArray(matchedFiles)) {
+          for (const f of matchedFiles) {
+            if (f.name && f.name.startsWith(`${id}_`)) {
+              filesToDelete.add(f.name);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('Error listando archivos asociados al animal:', err.message);
+      }
+
+      // 3. Eliminar los archivos físicos de Supabase Storage
+      if (filesToDelete.size > 0) {
+        await this.deleteDocuments(Array.from(filesToDelete));
+      }
+
+      // 4. Si existen en almacenamiento local (modo offline/desarrollo), eliminarlos también
+      const localDocsDir = path.resolve(process.cwd(), 'uploads', 'documents');
+      for (const filename of filesToDelete) {
+        const localPath = path.join(localDocsDir, filename);
+        if (fs.existsSync(localPath)) {
+          try {
+            fs.unlinkSync(localPath);
+          } catch {}
+        }
+      }
+    } catch (cleanErr: any) {
+      console.warn(`Error limpiando archivos del animal ${id}:`, cleanErr.message);
+    }
+
+    // 5. Eliminar el registro del animal en la base de datos PostgreSQL
     const { error } = await supabase.from('animals').delete().eq('id', id);
     if (error) throw error;
     return true;
@@ -619,5 +671,10 @@ export const dataAdapter = {
 
   async deleteDocument(filename: string) {
     return await supabase.storage.from(DOCUMENTS_BUCKET).remove([filename]);
+  },
+
+  async deleteDocuments(filenames: string[]) {
+    if (!filenames || filenames.length === 0) return;
+    return await supabase.storage.from(DOCUMENTS_BUCKET).remove(filenames);
   },
 };
