@@ -151,6 +151,11 @@ export type AuditAction =
   | 'ELIMINAR_USUARIO'
   | 'DESCARGA_COPIA_SEGURIDAD'
   | 'RESTAURAR_COPIA_SEGURIDAD'
+  | 'CREAR_ENTRADA'
+  | 'MODIFICAR_ENTRADA'
+  | 'ELIMINAR_ENTRADA'
+  | 'ENVIO_PERMISOS_DONANA'
+  | 'DESCARGA_ODS_ENTRADA'
   | 'OTRO';
 
 export type AuditEntity =
@@ -162,6 +167,7 @@ export type AuditEntity =
   | 'ASOCIACION'
   | 'SEMENTAL'
   | 'USUARIO'
+  | 'ENTRADA'
   | 'SISTEMA';
 
 export interface AuditLog {
@@ -175,4 +181,77 @@ export interface AuditLog {
   entidadId?: string;
   detallesJson?: string;
   ip?: string;
+}
+
+// ==============================================================================
+// MÓDULO ENTRADAS (COMUNICACIÓN PERMISOS MARISMA DE HINOJOS - DOÑANA)
+// ==============================================================================
+
+export type TipoRemesa = 'ORDINARIA' | 'EXTRAORDINARIA';
+export type EstadoRemesa = 'BORRADOR' | 'GENERADO' | 'ENVIADO';
+
+export interface EntradaAnimal {
+  id: string;
+  remesaId: string;
+  personaEntradaId: string;
+  animalId?: string | null;
+  esManual: boolean;
+  plazaNumero: string;
+  identificacionChip: string;
+  nombreAnimal?: string;
+  propietarioNombre?: string;
+  faena: 'SOLTAR' | 'RECOGER';
+  guiaDocumentoId?: string;
+  guiaArchivoUrl?: string;
+  guiaArchivoNombre?: string;
+  creadoEn?: string;
+}
+
+export interface EntradaPersona {
+  id: string;
+  remesaId: string;
+  diaSemana: string; // 'SABADO' | 'DOMINGO' | 'MIERCOLES' | 'JUEVES' | custom
+  fecha: string; // YYYY-MM-DD
+  esTitular: boolean;
+  titularId?: string | null;
+  nombreApellidos: string;
+  ownerId?: string | null;
+  faena: string; // 'REPASAR' | 'SOLTAR' | 'RECOGER' | custom
+  finca: string; // 'MARISMA DE HINOJOS'
+  matriculas?: string;
+  telefono?: string;
+  observacionesRaw?: string;
+  ordenFila: number;
+  animales?: EntradaAnimal[];
+}
+
+export interface EntradaRemesa {
+  id: string;
+  campana: string;
+  tipoRemesa: TipoRemesa;
+  tituloOficial: string;
+  fechas: string[]; // ['2026-10-24', '2026-10-25']
+  diasTexto: string; // 'Sábado 24 y Domingo 25 de Octubre'
+  estado: EstadoRemesa;
+  archivoOdsNombre?: string;
+  archivoOdsUrl?: string;
+  fechaEnvioEmail?: string;
+  destinatariosEmail?: string;
+  observacionesGenerales?: string;
+  creadoPorUsuarioId?: string;
+  creadoPorNombre?: string;
+  creadoEn: string;
+  actualizadoEn: string;
+  personas?: EntradaPersona[];
+}
+
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromName: string;
+  destinatarios: string;
+  bcc: string;
 }

@@ -24,12 +24,13 @@ import {
   Sparkles,
   ShieldCheck,
   Database,
+  Mail,
 } from 'lucide-react';
 import { Animal, Owner, Stallion, Movement, User, Association } from '../types/marisma';
 import { StorageService } from '../services/storageService';
 import { ApiService } from '../services/apiService';
 import { UsersView } from './UsersView';
-import { AuditView } from './AuditView';
+import { SmtpConfigView } from './SmtpConfigView';
 import { BackupView } from './BackupView';
 
 interface SettingsViewProps {
@@ -53,7 +54,7 @@ interface SettingsViewProps {
   onOpenNewCampaignWizard?: (initialName?: string) => void;
 }
 
-export type SettingsSection = 'ESTADISTICAS' | 'CAMPANAS' | 'USUARIOS' | 'AUDITORIA' | 'COPIA_SEGURIDAD' | 'CAMPANAS_BACKUP';
+export type SettingsSection = 'ESTADISTICAS' | 'CAMPANAS' | 'USUARIOS' | 'SMTP' | 'COPIA_SEGURIDAD' | 'CAMPANAS_BACKUP';
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   campaigns,
@@ -82,7 +83,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
     try {
       const saved = localStorage.getItem('marisma_settings_section') as SettingsSection | null;
-      if (saved && ['ESTADISTICAS', 'CAMPANAS', 'USUARIOS', 'AUDITORIA', 'COPIA_SEGURIDAD', 'CAMPANAS_BACKUP'].includes(saved)) {
+      if (saved && ['ESTADISTICAS', 'CAMPANAS', 'USUARIOS', 'SMTP', 'COPIA_SEGURIDAD', 'CAMPANAS_BACKUP'].includes(saved)) {
         return saved === 'CAMPANAS_BACKUP' ? 'CAMPANAS' : saved;
       }
     } catch {}
@@ -685,15 +686,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
 
               <button
-                onClick={() => handleSelectSection('AUDITORIA')}
+                onClick={() => handleSelectSection('SMTP')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
-                  activeSection === 'AUDITORIA'
+                  activeSection === 'SMTP'
                     ? 'bg-[#008744] text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Auditoría</span>
+                <Mail className="w-4 h-4" />
+                <span>Configuración SMTP</span>
               </button>
 
               <button
@@ -1310,9 +1311,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* SECTION 4: AUDITORÍA - Solo visible para ADMINISTRADOR */}
-      {activeSection === 'AUDITORIA' && currentUser.rol === 'ADMINISTRADOR' && (
-        <AuditView />
+      {/* SECTION 4: CONFIGURACIÓN SMTP - Solo visible para ADMINISTRADOR */}
+      {activeSection === 'SMTP' && currentUser.rol === 'ADMINISTRADOR' && (
+        <SmtpConfigView />
       )}
 
       {/* SECTION 5: COPIA DE SEGURIDAD - Solo visible para ADMINISTRADOR */}

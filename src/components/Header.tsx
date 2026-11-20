@@ -1,7 +1,6 @@
 import React from 'react';
 import { User } from '../types/marisma';
 import { HinojosLogo } from './HinojosLogo';
-import { ServerStatusPill } from './ServerStatusBanner';
 import {
   FileText,
   Users,
@@ -11,7 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-export type NavTab = 'EQUINO' | 'BOVINO' | 'PROPIETARIOS' | 'HISTORICO' | 'AJUSTES';
+export type NavTab = 'EQUINO' | 'BOVINO' | 'PROPIETARIOS' | 'ENTRADAS' | 'HISTORICO' | 'AJUSTES';
 
 interface HeaderProps {
   currentTab: NavTab;
@@ -37,8 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
             <HinojosLogo className="w-11 h-14" />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-lg md:text-xl tracking-tight text-white">
-                  Ayuntamiento de Hinojos
+                <span className="font-bold text-lg md:text-xl tracking-tight text-white whitespace-nowrap">
+                  Ayto. de Hinojos
                 </span>
               </div>
               <p className="text-xs text-emerald-200 tracking-wider font-medium uppercase">
@@ -98,6 +97,18 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              onClick={() => onSelectTab('ENTRADAS')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                currentTab === 'ENTRADAS'
+                  ? 'bg-emerald-800 text-white shadow-inner font-semibold'
+                  : 'text-emerald-100 hover:bg-emerald-800/60 hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Entradas</span>
+            </button>
+
+            <button
               onClick={() => onSelectTab('AJUSTES')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 currentTab === 'AJUSTES'
@@ -112,8 +123,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User profile & actions */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            <ServerStatusPill />
-
             {/* User profile pill (Informativo / Solo lectura) */}
             <div
               className="flex items-center gap-2.5 bg-emerald-900/90 px-3 py-1.5 rounded-lg border border-emerald-700/60 shadow-sm select-none"
@@ -147,8 +156,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile Navigation bar - 5 items fully visible, no slider */}
-        <div className="grid grid-cols-5 md:hidden py-2 border-t border-emerald-700/60 gap-1">
+        {/* Mobile Navigation bar - 6 items fully visible, no slider */}
+        <div className="grid grid-cols-6 md:hidden py-2 border-t border-emerald-700/60 gap-1">
           <button
             onClick={() => onSelectTab('EQUINO')}
             className={`py-1.5 px-1 rounded-md text-xs font-medium text-center truncate ${
@@ -180,6 +189,14 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             📋 Histórico
+          </button>
+          <button
+            onClick={() => onSelectTab('ENTRADAS')}
+            className={`py-1.5 px-1 rounded-md text-xs font-medium text-center truncate ${
+              currentTab === 'ENTRADAS' ? 'bg-emerald-800 text-white font-bold' : 'text-emerald-100'
+            }`}
+          >
+            ✉️ Entradas
           </button>
           <button
             onClick={() => onSelectTab('AJUSTES')}

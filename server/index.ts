@@ -4,6 +4,8 @@ import multer from 'multer';
 import dotenv from 'dotenv';
 import JSZip from 'jszip';
 import { OdsExportService } from './services/odsExportService.js';
+import { generateEntradaOds } from './services/odsEntradasService.js';
+import { sendEntradaEmail, testSmtpConnection, getSmtpConfig, encryptPassword } from './services/emailService.js';
 import { dataAdapter } from './dataAdapter.js';
 import {
   Animal,
@@ -15,6 +17,10 @@ import {
   User,
   Association,
   AuditLog,
+  EntradaRemesa,
+  EntradaPersona,
+  EntradaAnimal,
+  SmtpConfig,
 } from '../src/types/marisma.js';
 import {
   hashPassword,
@@ -1095,6 +1101,313 @@ app.get('/api/export/bovinos-ods', async (req: AuthenticatedRequest, res) => {
   } catch (error: any) {
     console.error('Error generando ODS Bovinos:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// 13. MÓDULO ENTRADAS (MARISMA DE HINOJOS - DOÑANA)
+// ==========================================
+
+// Listar remesas
+app.get('/api/entradas', async (req: AuthenticatedRequest, res) => {
+  try {
+    const campana = (req.query.campana as string) || undefined;
+    const remesas = await dataAdapter.getEntradasRemesas(campana);
+    res.json(remesas);
+  } catch (error: any) {
+    console.error('Error en GET /api/entradas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Detalle de remesa
+app.get('/api/entradas/:id', async (req: AuthenticatedRequest, res) => {
+  try {
+    const remesa = await dataAdapter.getEntradaRemesaById(req.params.id);
+    if (!remesa) return res.status(404).json({ error: 'Remesa de entrada no encontrada' });
+    res.json(remesa);
+  } catch (error: any) {
+    console.error('Error en GET /api/entradas/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Guardar/Crear remesa
+app.post('/api/entradas', async (req: AuthenticatedRequest, res) => {
+  try {
+    const remesaData: EntradaRemesa = req.body;
+    if (!remesaData.id) {
+      remesaData.id = `REM-${Date.now()}`;
+    }
+    if (req.user) {
+      remesaData.creadoPorUsuarioId = req.user.id;
+      const dbUser = await dataAdapter.getUserById(req.user.id);
+      remesaData.creadoPorNombre = dbUser ? dbUser.nombreCompleto : req.user.username;
+    }
+
+    const saved = await dataAdapter.saveEntradaRemesa(remesaData);
+
+    await auditLog(req, remesaData.estado === 'ENVIADO' ? 'ENVIO_PERMISOS_DONANA' : 'CREAR_ENTRADA', 'ENTRADA', saved.id, {
+      titulo: saved.tituloOficial,
+      tipo: saved.tipoRemesa,
+      fechas: saved.fechas,
+      totalPersonas: saved.personas?.length || 0,
+    });
+
+    res.status(201).json(saved);
+  } catch (error: any) {
+    console.error('Error en POST /api/entradas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar remesa
+app.delete('/api/entradas/:id', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    await dataAdapter.deleteEntradaRemesa(id);
+
+    await auditLog(req, 'ELIMINAR_ENTRADA', 'ENTRADA', id, {});
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/entradas/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Descargar ODS oficial de la remesa
+app.get('/api/entradas/:id/download-ods', async (req: AuthenticatedRequest, res) => {
+  try {
+    const remesa = await dataAdapter.getEntradaRemesaById(req.params.id);
+    if (!remesa) return res.status(404).json({ error: 'Remesa no encontrada' });
+
+    const buffer = await generateEntradaOds(remesa);
+    const filename = (remesa.archivoOdsNombre || `${remesa.tituloOficial || 'Permisos_Marisma_Hinojos'}.ods`)
+      .replace(/[^\w.-]/g, '_');
+
+    await auditLog(req, 'DESCARGA_ODS_ENTRADA', 'ENTRADA', remesa.id, {
+      archivo: filename,
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.oasis.opendocument.spreadsheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (error: any) {
+    console.error('Error descargando ODS de entrada:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enviar remesa por correo electrónico
+app.post('/api/entradas/:id/enviar-email', async (req: AuthenticatedRequest, res) => {
+  try {
+    const remesa = await dataAdapter.getEntradaRemesaById(req.params.id);
+    if (!remesa) return res.status(404).json({ error: 'Remesa no encontrada' });
+
+    const { destinatariosOverride } = req.body;
+    const odsBuffer = await generateEntradaOds(remesa);
+
+    let currentUser: User | null = null;
+    if (req.user) {
+      currentUser = await dataAdapter.getUserById(req.user.id);
+    }
+    if (!currentUser) {
+      currentUser = {
+        id: req.user?.id || 'admin',
+        username: req.user?.username || 'admin',
+        nombreCompleto: 'Usuario Administrador',
+        rol: 'ADMINISTRADOR',
+        cargo: 'Responsable',
+        email: '',
+        avatarInitials: 'AD',
+        activo: true,
+      };
+    }
+
+    const sendResult = await sendEntradaEmail({
+      remesa,
+      odsBuffer,
+      destinatariosOverride,
+      user: currentUser,
+    });
+
+    // Actualizar estado de la remesa a ENVIADO
+    remesa.estado = 'ENVIADO';
+    remesa.fechaEnvioEmail = new Date().toISOString();
+    remesa.destinatariosEmail = sendResult.recipients.join(', ');
+    remesa.archivoOdsNombre = remesa.archivoOdsNombre || `${(remesa.tituloOficial || 'Permisos_Marisma').replace(/[^\w.-]/g, '_')}.ods`;
+
+    const updated = await dataAdapter.saveEntradaRemesa(remesa);
+
+    await auditLog(req, 'ENVIO_PERMISOS_DONANA', 'ENTRADA', remesa.id, {
+      titulo: remesa.tituloOficial,
+      destinatarios: sendResult.recipients,
+      bcc: sendResult.bcc,
+      messageId: sendResult.messageId,
+    });
+
+    res.json({ success: true, remesa: updated, sendResult });
+  } catch (error: any) {
+    console.error('Error enviando remesa por email:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Subir Guía de Traslado para un animal en una entrada
+app.post('/api/entradas/upload-guia', uploadMemory.single('file'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const file = req.file;
+    const { animalId, remesaId, personaEntradaId, faena, plazaNumero, chip } = req.body;
+
+    if (!file) return res.status(400).json({ error: 'No se ha subido ningún archivo' });
+    if (!hasValidSignature(file.buffer, file.mimetype)) {
+      return res.status(400).json({ error: 'El archivo debe ser un PDF, JPG o PNG válido' });
+    }
+
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageFilename = `guia_${animalId || 'externo'}_${Date.now()}_${cleanName}`;
+
+    await dataAdapter.uploadDocument(storageFilename, file.buffer, file.mimetype);
+
+    const sizeStr = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`;
+
+    const docUrl = `/uploads/documents/${storageFilename}`;
+    const docId = `guia-${Date.now()}`;
+
+    // Si el animal existe en el censo, agregar la guía a su expediente en Documentación Adjunta
+    // SIN modificar fecha_ultima_revision ni estado_presencia
+    const animalsToUpdate: Animal[] = [];
+    if (animalId) {
+      const a = await dataAdapter.getAnimalById(animalId);
+      if (a) animalsToUpdate.push(a);
+    }
+    if (chip || plazaNumero) {
+      const allAnimals = await dataAdapter.getAnimals();
+      const matches = allAnimals.filter(
+        (a) =>
+          (chip && a.identificacion1 && a.identificacion1.trim() === String(chip).trim()) ||
+          (plazaNumero && a.plazaNumero && a.plazaNumero.trim().toUpperCase() === String(plazaNumero).trim().toUpperCase())
+      );
+      for (const m of matches) {
+        if (!animalsToUpdate.some((x) => x.id === m.id)) {
+          animalsToUpdate.push(m);
+        }
+      }
+    }
+
+    for (const animal of animalsToUpdate) {
+      const newDoc: AnimalDocument = {
+        id: docId,
+        nombre: `Guía Traslado ${animal.plazaNumero ? `(${animal.plazaNumero})` : ''} - ${file.originalname}`,
+        tipo: 'GUIA_SANITARIA',
+        fechaSubida: new Date().toISOString().slice(0, 10),
+        tamano: sizeStr,
+        url: docUrl,
+      };
+      animal.documentos = [...(animal.documentos || []), newDoc];
+      await dataAdapter.saveAnimal(animal);
+
+      await auditLog(req, 'ALTA', 'DOCUMENTO', newDoc.id, {
+        animalId: animal.id,
+        plaza: animal.plazaNumero,
+        documento: newDoc.nombre,
+        origen: 'MODULO_ENTRADAS',
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      documentId: docId,
+      documentName: file.originalname,
+      documentUrl: docUrl,
+      size: sizeStr,
+    });
+  } catch (error: any) {
+    console.error('Error subiendo guía de traslado:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener historial de autorizaciones de entrada de un animal concreto
+app.get('/api/entradas/animal/:animalId', async (req: AuthenticatedRequest, res) => {
+  try {
+    const list = await dataAdapter.getEntradasByAnimalId(req.params.animalId);
+    res.json(list);
+  } catch (error: any) {
+    console.error('Error en GET /api/entradas/animal/:animalId:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Configuración SMTP
+app.get('/api/settings/smtp', async (_req: AuthenticatedRequest, res) => {
+  try {
+    const config = await getSmtpConfig();
+    res.json({
+      ...config,
+      pass: config.pass ? '••••••••' : '',
+      hasPass: Boolean(config.pass),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/settings/smtp', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { host, port, secure, user, pass, fromName, destinatarios, bcc } = req.body;
+
+    if (host !== undefined) await dataAdapter.setSetting('entradas_smtp_host', host.trim());
+    if (port !== undefined) await dataAdapter.setSetting('entradas_smtp_port', String(port).trim());
+    if (secure !== undefined) await dataAdapter.setSetting('entradas_smtp_secure', String(Boolean(secure)));
+    if (user !== undefined) await dataAdapter.setSetting('entradas_smtp_user', user.trim());
+    if (pass && pass !== '••••••••' && pass !== '********') {
+      const encrypted = encryptPassword(pass.trim());
+      await dataAdapter.setSetting('entradas_smtp_pass', encrypted);
+    }
+    if (fromName !== undefined) await dataAdapter.setSetting('entradas_smtp_from_name', fromName.trim());
+    if (destinatarios !== undefined) await dataAdapter.setSetting('entradas_email_destinatarios', destinatarios.trim());
+    if (bcc !== undefined) await dataAdapter.setSetting('entradas_email_bcc', bcc.trim());
+
+    await auditLog(req, 'MODIFICACION', 'SISTEMA', 'config-smtp', {
+      host,
+      user,
+      destinatarios,
+      bcc,
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/settings/smtp-test', async (req: AuthenticatedRequest, res) => {
+  try {
+    let { host, port, secure, user, pass, fromName, testRecipient } = req.body;
+
+    if (!pass || pass === '••••••••' || pass === '********') {
+      pass = (await getSmtpConfig()).pass || '';
+    }
+
+    const config: SmtpConfig = {
+      host: host || (await dataAdapter.getSetting('entradas_smtp_host')) || '',
+      port: port || parseInt((await dataAdapter.getSetting('entradas_smtp_port')) || '587', 10),
+      secure: secure !== undefined ? Boolean(secure) : ((await dataAdapter.getSetting('entradas_smtp_secure')) === 'true'),
+      user: user || (await dataAdapter.getSetting('entradas_smtp_user')) || '',
+      pass,
+      fromName: fromName || (await dataAdapter.getSetting('entradas_smtp_from_name')) || 'Ayuntamiento de Hinojos',
+      destinatarios: '',
+      bcc: '',
+    };
+
+    const result = await testSmtpConnection(config, testRecipient);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error probando SMTP:', error);
+    res.status(400).json({ error: error.message });
   }
 });
 

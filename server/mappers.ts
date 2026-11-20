@@ -5,6 +5,9 @@ import {
   Movement,
   User,
   AuditLog,
+  EntradaRemesa,
+  EntradaPersona,
+  EntradaAnimal,
 } from '../src/types/marisma.js';
 
 export function mapAnimalRow(row: any): Animal {
@@ -116,5 +119,73 @@ export function mapAuditLogRow(row: any): AuditLog {
     entidadId: row.entidad_id || undefined,
     detallesJson: row.detalles_json || undefined,
     ip: row.ip || undefined,
+  };
+}
+
+export function mapEntradaAnimalRow(row: any): EntradaAnimal {
+  return {
+    id: row.id,
+    remesaId: row.remesa_id,
+    personaEntradaId: row.persona_entrada_id,
+    animalId: row.animal_id || null,
+    esManual: Boolean(row.es_manual),
+    plazaNumero: row.plaza_numero,
+    identificacionChip: row.identificacion_chip,
+    nombreAnimal: row.nombre_animal || undefined,
+    propietarioNombre: row.propietario_nombre || undefined,
+    faena: row.faena,
+    guiaDocumentoId: row.guia_documento_id || undefined,
+    guiaArchivoUrl: row.guia_archivo_url || undefined,
+    guiaArchivoNombre: row.guia_archivo_nombre || undefined,
+    creadoEn: row.creado_en || undefined,
+  };
+}
+
+export function mapEntradaPersonaRow(row: any, animales: EntradaAnimal[] = []): EntradaPersona {
+  return {
+    id: row.id,
+    remesaId: row.remesa_id,
+    diaSemana: row.dia_semana,
+    fecha: row.fecha,
+    esTitular: Boolean(row.es_titular),
+    titularId: row.titular_id || null,
+    nombreApellidos: row.nombre_apellidos,
+    ownerId: row.owner_id || null,
+    faena: row.faena,
+    finca: row.finca || 'MARISMA DE HINOJOS',
+    matriculas: row.matriculas || '',
+    telefono: row.telefono || '',
+    observacionesRaw: row.observaciones_raw || '',
+    ordenFila: row.orden_fila ?? 0,
+    animales,
+  };
+}
+
+export function mapEntradaRemesaRow(row: any, personas: EntradaPersona[] = []): EntradaRemesa {
+  let fechas: string[] = [];
+  try {
+    fechas = row.fechas_json ? JSON.parse(row.fechas_json) : [];
+  } catch {
+    fechas = [];
+  }
+
+  return {
+    id: row.id,
+    campana: row.campana || '2025-2026',
+    tipoRemesa: row.tipo_remesa || 'ORDINARIA',
+    tituloOficial: row.titulo_oficial,
+    fechas,
+    diasTexto: row.dias_texto || '',
+    estado: row.estado || 'BORRADOR',
+    archivoOdsNombre: row.archivo_ods_nombre || undefined,
+    archivoOdsUrl: row.archivo_ods_url || undefined,
+    fechaEnvioEmail: row.fecha_envio_email || undefined,
+    destinatariosEmail: row.destinatarios_email || undefined,
+    observacionesGenerales: row.observaciones_generales || undefined,
+    creadoPorUsuarioId: row.creado_por_usuario_id || undefined,
+    creadoPorNombre: row.creado_por_nombre || undefined,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+    personas,
   };
 }

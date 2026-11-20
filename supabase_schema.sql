@@ -130,6 +130,62 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip TEXT
 );
 
+-- 10. TABLA: entradas_remesas (Comunicaciones oficiales a Doñana)
+CREATE TABLE IF NOT EXISTS entradas_remesas (
+  id TEXT PRIMARY KEY,
+  campana TEXT NOT NULL DEFAULT '2025-2026',
+  tipo_remesa TEXT NOT NULL DEFAULT 'ORDINARIA',
+  titulo_oficial TEXT NOT NULL,
+  fechas_json TEXT NOT NULL,
+  dias_texto TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'BORRADOR',
+  archivo_ods_nombre TEXT,
+  archivo_ods_url TEXT,
+  fecha_envio_email TEXT,
+  destinatarios_email TEXT,
+  observaciones_generales TEXT,
+  creado_por_usuario_id TEXT,
+  creado_por_nombre TEXT,
+  creado_en TEXT NOT NULL,
+  actualizado_en TEXT NOT NULL
+);
+
+-- 11. TABLA: entradas_personas (Personas autorizadas por día)
+CREATE TABLE IF NOT EXISTS entradas_personas (
+  id TEXT PRIMARY KEY,
+  remesa_id TEXT NOT NULL REFERENCES entradas_remesas(id) ON DELETE CASCADE,
+  dia_semana TEXT NOT NULL,
+  fecha TEXT NOT NULL,
+  es_titular INTEGER NOT NULL DEFAULT 1,
+  titular_id TEXT,
+  nombre_apellidos TEXT NOT NULL,
+  owner_id TEXT,
+  faena TEXT NOT NULL,
+  finca TEXT NOT NULL DEFAULT 'MARISMA DE HINOJOS',
+  matriculas TEXT,
+  telefono TEXT,
+  observaciones_raw TEXT,
+  orden_fila INTEGER NOT NULL DEFAULT 0
+);
+
+-- 12. TABLA: entradas_animales (Equinos autorizados para soltar/recoger)
+CREATE TABLE IF NOT EXISTS entradas_animales (
+  id TEXT PRIMARY KEY,
+  remesa_id TEXT NOT NULL REFERENCES entradas_remesas(id) ON DELETE CASCADE,
+  persona_entrada_id TEXT NOT NULL REFERENCES entradas_personas(id) ON DELETE CASCADE,
+  animal_id TEXT,
+  es_manual INTEGER NOT NULL DEFAULT 0,
+  plaza_numero TEXT NOT NULL,
+  identificacion_chip TEXT NOT NULL,
+  nombre_animal TEXT,
+  propietario_nombre TEXT,
+  faena TEXT NOT NULL,
+  guia_documento_id TEXT,
+  guia_archivo_url TEXT,
+  guia_archivo_nombre TEXT,
+  creado_en TEXT NOT NULL
+);
+
 -- Índices de alto rendimiento
 CREATE INDEX IF NOT EXISTS idx_animals_campana ON animals(campana);
 CREATE INDEX IF NOT EXISTS idx_animals_propietario ON animals(propietario);
@@ -137,6 +193,10 @@ CREATE INDEX IF NOT EXISTS idx_movements_animal_id ON movements(animal_id);
 CREATE INDEX IF NOT EXISTS idx_movements_campana ON movements(campana);
 CREATE INDEX IF NOT EXISTS idx_owners_campana ON owners(campana);
 CREATE INDEX IF NOT EXISTS idx_audit_fecha ON audit_logs(fecha);
+CREATE INDEX IF NOT EXISTS idx_entradas_remesas_campana ON entradas_remesas(campana);
+CREATE INDEX IF NOT EXISTS idx_entradas_personas_remesa ON entradas_personas(remesa_id);
+CREATE INDEX IF NOT EXISTS idx_entradas_animales_animal ON entradas_animales(animal_id);
+CREATE INDEX IF NOT EXISTS idx_entradas_animales_remesa ON entradas_animales(remesa_id);
 
 -- Inmutabilidad estricta de la auditoría (Ley de trazabilidad)
 CREATE OR REPLACE FUNCTION audit_logs_immutable()
@@ -168,3 +228,6 @@ ALTER TABLE movements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE entradas_remesas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE entradas_personas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE entradas_animales DISABLE ROW LEVEL SECURITY;

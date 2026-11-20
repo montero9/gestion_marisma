@@ -9,6 +9,8 @@ import {
   AnimalDocument,
   Annotation,
   AuditLog,
+  EntradaRemesa,
+  SmtpConfig,
 } from '../types/marisma';
 
 const CURRENT_USER_KEY = 'marisma_hinojos_current_user_v1';
@@ -468,5 +470,98 @@ export const ApiService = {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.uploadFile('/api/admin/backup/restore-zip', formData);
+  },
+
+  // 14. Módulo Entradas (Comunicaciones a Doñana)
+  async getEntradas(campana?: string): Promise<EntradaRemesa[]> {
+    const qs = campana ? `?campana=${encodeURIComponent(campana)}` : '';
+    return apiClient.request<EntradaRemesa[]>(`/api/entradas${qs}`);
+  },
+
+  async getEntradaById(id: string): Promise<EntradaRemesa> {
+    return apiClient.request<EntradaRemesa>(`/api/entradas/${id}`);
+  },
+
+  async saveEntrada(remesa: EntradaRemesa): Promise<EntradaRemesa> {
+    return apiClient.request<EntradaRemesa>('/api/entradas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(remesa),
+    });
+  },
+
+  async deleteEntrada(id: string): Promise<void> {
+    return apiClient.request<void>(`/api/entradas/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async downloadEntradaOds(id: string, defaultFilename?: string): Promise<void> {
+    const url = `${apiClient.getBaseUrl()}/api/entradas/${id}/download-ods`;
+    const token = apiClient.getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new Error(`Error ${res.status}: no se pudo descargar el archivo ODS`);
+    }
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = defaultFilename || `Permisos_Entrada_Hinojos_${id}.ods`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
+  },
+
+  async enviarEntradaEmail(id: string, destinatariosOverride?: string): Promise<{
+    success: boolean;
+    remesa: EntradaRemesa;
+    sendResult: any;
+  }> {
+    return apiClient.request(`/api/entradas/${id}/enviar-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinatariosOverride }),
+    });
+  },
+
+  async uploadGuiaTraslado(formData: FormData): Promise<{
+    success: boolean;
+    documentId: string;
+    documentName: string;
+    documentUrl: string;
+    size: string;
+  }> {
+    return apiClient.uploadFile('/api/entradas/upload-guia', formData);
+  },
+
+  async getAnimalEntradas(animalId: string): Promise<any[]> {
+    return apiClient.request<any[]>(`/api/entradas/animal/${animalId}`);
+  },
+
+  // 15. Configuración SMTP
+  async getSmtpConfig(): Promise<SmtpConfig & { hasPass: boolean }> {
+    return apiClient.request<SmtpConfig & { hasPass: boolean }>('/api/settings/smtp');
+  },
+
+  async saveSmtpConfig(config: Partial<SmtpConfig>): Promise<{ success: boolean }> {
+    return apiClient.request<{ success: boolean }>('/api/settings/smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+  },
+
+  async testSmtpConfig(config: Partial<SmtpConfig> & { testRecipient?: string }): Promise<any> {
+    return apiClient.request('/api/settings/smtp-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
   },
 };

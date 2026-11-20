@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Animal, Movement, User } from '../types/marisma';
+import { ApiService } from '../services/apiService';
 import { HinojosLogo } from './HinojosLogo';
 import {
   X,
@@ -13,6 +14,9 @@ import {
   Clock,
   MapPin,
   Tag,
+  Send,
+  ExternalLink,
+  Paperclip,
 } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 
@@ -24,7 +28,26 @@ interface AnimalDetailModalProps {
   onEdit: (animal: Animal) => void;
   movements: Movement[];
   currentUser?: User | null;
+  onOpenEntrada?: (remesaId: string) => void;
 }
+
+const formatDocumentDate = (val?: string | null): string => {
+  if (!val || typeof val !== 'string' || !val.trim()) return '';
+  const str = val.trim();
+  if (/^\d{2}\/\d{2}\/(\d{2}|\d{4})$/.test(str)) return str;
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  try {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  } catch {}
+  return str;
+};
 
 export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
   isOpen = true,
@@ -34,8 +57,50 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
   onEdit,
   movements,
   currentUser,
+  onOpenEntrada,
 }) => {
   const isReadOnly = currentUser?.rol !== 'ADMINISTRADOR';
+  const [animalEntradas, setAnimalEntradas] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen && animal?.id) {
+      ApiService.getAnimalEntradas(animal.id)
+        .then((data) => setAnimalEntradas(data || []))
+        .catch(() => setAnimalEntradas([]));
+    } else {
+      setAnimalEntradas([]);
+    }
+  }, [isOpen, animal?.id]);
+
+  // Guías de traslado adjuntas desde el módulo de Entradas
+  const guiasDeEntradas = useMemo(() => {
+    return animalEntradas
+      .filter((e) => e.guia_archivo_url)
+      .map((e) => ({
+        id: e.guia_documento_id || e.id,
+        nombre: e.guia_archivo_nombre || `Guía Traslado - ${e.faena} (${e.entradas_personas?.fecha || ''})`,
+        tipo: 'GUIA_SANITARIA' as const,
+        fechaSubida: (e.creado_en || '').slice(0, 10),
+        tamano: 'Adjunto en Entrada',
+        url: e.guia_archivo_url,
+        origenEntrada: true,
+        faena: e.faena,
+        remesaTitulo: e.entradas_remesas?.titulo_oficial,
+      }));
+  }, [animalEntradas]);
+
+  // Documentos consolidados del censo + guías del módulo de Entradas
+  const todosLosDocumentos = useMemo(() => {
+    if (!animal) return [];
+    const list: any[] = [...(animal.documentos || [])];
+    for (const g of guiasDeEntradas) {
+      if (!list.some((d) => d.id === g.id || (d.url && d.url === g.url))) {
+        list.push(g);
+      }
+    }
+    return list;
+  }, [animal?.documentos, guiasDeEntradas]);
+
   useEffect(() => {
     if (!isOpen || !animal) return;
 
@@ -381,14 +446,14 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
           <div className="space-y-3">
             <h3 className="text-xs font-black uppercase text-gray-900 tracking-wider flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-blue-700" />
-              <span>Documentación Adjunta ({animal.documentos.length})</span>
+              <span>Documentación Adjunta ({todosLosDocumentos.length})</span>
             </h3>
 
-            {animal.documentos.length === 0 ? (
+            {todosLosDocumentos.length === 0 ? (
               <p className="text-xs text-gray-400 italic">No hay documentos cargados en el expediente.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {animal.documentos.map((doc) => (
+                {todosLosDocumentos.map((doc: any) => (
                   <div
                     key={doc.id}
                     className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition"
@@ -396,22 +461,119 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                     <div className="flex items-center gap-2.5">
                       <span className="text-lg">📄</span>
                       <div>
-                        <p className="text-xs font-bold text-gray-900 truncate max-w-[200px]">
-                          {doc.nombre}
-                        </p>
-                        <p className="text-[10px] text-gray-500">
-                          {doc.tipo.replace('_', ' ')} · {doc.tamano}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-gray-900 truncate max-w-[200px]">
+                            {doc.nombre}
+                          </p>
+                          {doc.origenEntrada && (
+                            <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">
+                              Guía Entrada
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 mt-0.5">
+                          <span>{doc.tipo ? doc.tipo.replace('_', ' ') : 'Documento'} · {doc.tamano || 'Archivo'}</span>
+                          {doc.fechaSubida && (
+                            <span className="inline-flex items-center gap-1 text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded font-medium border border-blue-100">
+                              <Calendar className="w-3 h-3 text-blue-600" />
+                              <span>{formatDocumentDate(doc.fechaSubida)}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => handleDownloadDoc(doc.nombre, doc.url, doc.fileData)}
-                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
                       title="Descargar"
                     >
                       <Download className="w-4 h-4" />
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Permisos de Entrada / Salida (Doñana) */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-black uppercase text-gray-900 tracking-wider flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Send className="w-4 h-4 text-emerald-700" />
+                <span>Permisos y Comunicaciones Doñana ({animalEntradas.length})</span>
+              </div>
+            </h3>
+
+            {animalEntradas.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No tiene permisos de entrada o salida registrados en Doñana.</p>
+            ) : (
+              <div className="space-y-2">
+                {animalEntradas.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-lg text-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded font-black text-[10px] ${
+                            item.faena === 'SOLTAR'
+                              ? 'bg-emerald-200 text-emerald-950'
+                              : 'bg-amber-200 text-amber-950'
+                          }`}
+                        >
+                          {item.faena}
+                        </span>
+                        <span className="font-bold text-gray-900">
+                          {item.entradas_remesas?.titulo_oficial || 'Permiso Doñana'}
+                        </span>
+                        {item.entradas_remesas?.estado === 'ENVIADO' && (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                            Enviado a Doñana
+                          </span>
+                        )}
+                      </div>
+
+                      {onOpenEntrada && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenEntrada(item.remesa_id);
+                          }}
+                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-emerald-200 shadow-2xs"
+                        >
+                          <span>Ver Entrada</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-gray-600 flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
+                      <span>
+                        Día: <strong>{item.entradas_personas?.dia_semana || ''} ({item.entradas_personas?.fecha || '—'})</strong>
+                      </span>
+                      <span>
+                        Titular: <strong>{item.entradas_personas?.nombre_apellidos || '—'}</strong>
+                      </span>
+                      {item.entradas_personas?.matriculas && (
+                        <span>
+                          Vehículo: <strong className="font-mono">{item.entradas_personas?.matriculas}</strong>
+                        </span>
+                      )}
+                      {item.guia_archivo_url && (
+                        <a
+                          href={item.guia_archivo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <Paperclip className="w-3 h-3" />
+                          <span>{item.guia_archivo_nombre || 'Guía de Traslado'}</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

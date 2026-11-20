@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Manual Oficial de Usuario · Gestión Marisma 2 · Ayuntamiento de Hinojos</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 14mm 18mm 14mm;
+    @bottom-right {
+      content: "Página " counter(page);
+      font-size: 8pt;
+      color: #6b7280;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    @bottom-left {
+      content: "Ayuntamiento de Hinojos · Control Ganadero · Manual de Usuario";
+      font-size: 8pt;
+      color: #6b7280;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1f2937;
+    background-color: #ffffff;
+    font-size: 10pt;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Portada Institucional */
+  .cover {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 30px 20px;
+    box-sizing: border-box;
+    page-break-after: always;
+    border: 3px solid #065f46;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 40%, #ffffff 85%, #ecfdf5 100%);
+  }
+
+  .cover-header {
+    text-align: center;
+  }
+
+  .cover-logo {
+    width: 95px;
+    height: auto;
+    margin: 0 auto 15px auto;
+    display: block;
+  }
+
+  .cover-institution {
+    font-size: 17pt;
+    font-weight: 800;
+    color: #065f46;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0 0 5px 0;
+  }
+
+  .cover-department {
+    font-size: 11pt;
+    color: #047857;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+  }
+
+  .cover-body {
+    text-align: center;
+    margin: 35px 0;
+  }
+
+  .cover-title {
+    font-size: 28pt;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.2;
+    margin: 0 0 15px 0;
+  }
+
+  .cover-subtitle {
+    font-size: 13.5pt;
+    color: #047857;
+    font-weight: 600;
+    margin: 0 0 25px 0;
+    line-height: 1.4;
+  }
+
+  .cover-badge {
+    display: inline-block;
+    background-color: #059669;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 10pt;
+    padding: 8px 22px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .cover-meta {
+    background-color: #ffffff;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 4px 6px -1px rgba(6, 95, 70, 0.08);
+  }
+
+  .cover-meta table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+
+  .cover-meta td {
+    padding: 5px 8px;
+  }
+
+  .cover-meta td.label {
+    font-weight: 700;
+    color: #065f46;
+    width: 35%;
+  }
+
+  .cover-meta td.val {
+    color: #334155;
+  }
+
+  /* Encabezados y Tipografía */
+  h1 {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #065f46;
+    border-bottom: 2.5px solid #065f46;
+    padding-bottom: 6px;
+    margin-top: 25px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-left: 4px solid #059669;
+    padding-left: 10px;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #047857;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+  }
+
+  ul, ol {
+    margin: 0 0 12px 0;
+    padding-left: 24px;
+  }
+
+  li {
+    margin-bottom: 5px;
+  }
+
+  /* Cajas de Consejos y Ayuda Visual */
+  .callout {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    page-break-inside: avoid;
+    font-size: 9.5pt;
+  }
+
+  .callout-title {
+    font-weight: 800;
+    font-size: 10pt;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .callout-tip {
+    background-color: #ecfdf5;
+    border-left: 4px solid #10b981;
+    color: #065f46;
+  }
+  .callout-tip .callout-title { color: #047857; }
+
+  .callout-warn {
+    background-color: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    color: #78350f;
+  }
+  .callout-warn .callout-title { color: #b45309; }
+
+  .callout-important {
+    background-color: #fef2f2;
+    border-left: 4px solid #ef4444;
+    color: #7f1d1d;
+  }
+  .callout-important .callout-title { color: #b91c1c; }
+
+  .callout-note {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    color: #0c4a6e;
+  }
+  .callout-note .callout-title { color: #0369a1; }
+
+  /* Pasos Numerados Paso a Paso */
+  .step-box {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+    align-items: flex-start;
+    page-break-inside: avoid;
+  }
+
+  .step-num {
+    background-color: #065f46;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 11pt;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .step-content strong {
+    color: #065f46;
+  }
+
+  /* Tarjetas de Capturas */
+  .screenshot-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 14px 0;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+    background-color: #ffffff;
+    page-break-inside: avoid;
+  }
+
+  .screenshot-card img {
+    width: 100%;
+    display: block;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .screenshot-caption {
+    padding: 8px 12px;
+    background-color: #f8fafc;
+    font-size: 8.5pt;
+    color: #475569;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .screenshot-caption strong {
+    color: #065f46;
+  }
+
+  /* Tablas de Referencia Rápida */
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+
+  table.data-table th {
+    background-color: #065f46;
+    color: #ffffff;
+    font-weight: 700;
+    text-align: left;
+    padding: 7px 9px;
+    border: 1px solid #065f46;
+  }
+
+  table.data-table td {
+    padding: 6px 9px;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+  }
+
+  table.data-table tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+
+  /* Pastillas de Estado */
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+  .pill-green { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .pill-amber { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .pill-red { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .pill-blue { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+  .pill-purple { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+</style>
+</head>
+<body>
+
+<!-- ========================================== -->
+<!-- PORTADA DEL MANUAL DE USUARIO -->
+<!-- ========================================== -->
+<div class="cover">
+  <div class="cover-header">
+    <img src="screenshots/escudo-hinojos.svg" class="cover-logo" alt="Escudo de Hinojos" />
+    <h3 class="cover-institution">Ayuntamiento de Hinojos</h3>
+    <p class="cover-department">Concejalía de Agricultura, Ganadería y Espacio Natural de Doñana</p>
+  </div>
+
+  <div class="cover-body">
+    <span class="cover-badge">Guía Práctica e Intuitiva de Uso Diario</span>
+    <h1 class="cover-title" style="border:none; margin-top:15px;">MANUAL DE USUARIO</h1>
+    <h2 class="cover-subtitle" style="border:none; padding:0;">Sistema de Gestión Ganadera y Censo Municipal<br>Marisma de Hinojos (Doñana)</h2>
+    <p style="text-align:center; color:#64748b; font-size:9.5pt; margin:0;">Censo Oficial · Adjudicación de Plazas · Trazabilidad de Movimientos · Libros Oficiales</p>
+  </div>
+
+  <div class="cover-meta">
+    <table>
+      <tr>
+        <td class="label">Dirigido a:</td>
+        <td class="val"><strong>Personal Municipal, Guardería de la Marisma, Técnicos y Ganaderos</strong></td>
+        <td class="label">Edición:</td>
+        <td class="val">Noviembre 2026</td>
+      </tr>
+      <tr>
+        <td class="label">Especies:</td>
+        <td class="val">Ganado Equino (Caballos/Yeguas) y Ganado Bovino (Vacas/Toros)</td>
+        <td class="label">Ámbito:</td>
+        <td class="val">Marisma Comunal de Hinojos (Espacio Natural Doñana)</td>
+      </tr>
+      <tr>
+        <td class="label">Plataforma:</td>
+        <td class="val">Aplicación Web Oficial · Acceso con Usuario y Contraseña</td>
+        <td class="label">Soporte:</td>
+        <td class="val">Dpto. Informática y Servicios Ganaderos Hinojos</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- ÍNDICE DE CONTENIDOS -->
+<!-- ========================================== -->
+<h1>Índice de Contenidos del Manual de Usuario</h1>
+<ol style="font-size:10pt; line-height:1.7;">
+  <li><strong>Introducción: ¿Qué es el Sistema de Gestión Marisma?</strong></li>
+  <li><strong>Conceptos Clave que Debes Conocer Antes de Empezar</strong></li>
+  <li><strong>Acceso al Sistema y Gestión de la Sesión</strong></li>
+  <li><strong>El Censo de Animales (Equinos y Bovinos)</strong></li>
+  <li><strong>Guía Paso a Paso: Cómo Dar de Alta un Nuevo Animal</strong></li>
+  <li><strong>Consulta de Ficha Oficial del Animal e Impresión con Escudo</strong></li>
+  <li><strong>Trazabilidad de Movimientos: Salidas Temporales, Entradas y Bajas</strong></li>
+  <li><strong>Intercambio y Permuta de Plazas entre Ganaderos</strong></li>
+  <li><strong>Directorio de Ganaderos y Asociaciones Ganaderas</strong></li>
+  <li><strong>Libro Oficial de Sementales (Reproductores Autorizados)</strong></li>
+  <li><strong>Panel de Ajustes y Administración (Solo Administradores)</strong>
+    <ul>
+      <li>Estadísticas de ocupación y carga ganadera en la marisma.</li>
+      <li>Campañas anuales y Asistente de Traspaso de socios y censo.</li>
+      <li>Gestión de usuarios y contraseñas.</li>
+      <li>Auditoría oficial de operaciones realizadas.</li>
+      <li>Descarga y restauración de Copias de Seguridad en archivo .ZIP.</li>
+    </ul>
+  </li>
+  <li><strong>Exportación de Libros Oficiales a Excel / OpenDocument (.ODS)</strong></li>
+  <li><strong>Preguntas Frecuentes y Solución de Problemas Habituales (FAQ)</strong></li>
+</ol>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 1 & 2 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>1. Introducción: ¿Qué es el Sistema de Gestión Marisma?</h1>
+
+<p>
+  Bienvenido al manual oficial de la aplicación <strong>Gestión Marisma 2</strong>. Este sistema ha sido desarrollado expresamente para el <strong>Ayuntamiento de Hinojos</strong> con el objetivo de gestionar y controlar de manera digital, ágil y transparente toda la actividad ganadera que se desarrolla en los terrenos comunales de la Marisma de Hinojos, dentro del entorno protegido del <strong>Parque Nacional de Doñana</strong>.
+</p>
+<p>
+  Con esta aplicación podrás consultar en tiempo real qué animales están pastando dentro de la marisma, a qué ganadero pertenece cada plaza adjudicada, registrar nacimientos, salidas temporales y bajas, emitir fichas oficiales para imprimir con el escudo del Ayuntamiento y generar los libros oficiales para la Junta de Andalucía y las asociaciones ganaderas.
+</p>
+
+<h1>2. Conceptos Clave que Debes Conocer</h1>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th style="width:25%;">Concepto</th>
+      <th style="width:75%;">¿Qué significa en la Marisma de Hinojos?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Campaña Ganadera</strong></td>
+      <td>Es el ejercicio anual ganadero (por ejemplo, <code>2025-2026</code>). Cada campaña tiene su propio censo oficial. Cambiar de campaña en la aplicación te permite consultar años anteriores sin alterar los datos actuales.</td>
+    </tr>
+    <tr>
+      <td><strong>Número de Plaza</strong></td>
+      <td>Es el identificador físico y legal adjudicado por el Ayuntamiento. Los equinos llevan el prefijo <code>HI</code> seguido de tres cifras (ej. <code>HI001</code>, <code>HI002</code>). Los bovinos llevan el prefijo <code>HIN</code> (ej. <code>HIN001</code>).</td>
+    </tr>
+    <tr>
+      <td><strong>Cómputo de Cupo</strong></td>
+      <td>Representa el número máximo de cabezas ordinarias autorizadas a pastar. Solo descuentan plazas los animales titulares adjudicados (estén dentro o fuera temporalmente).</td>
+    </tr>
+    <tr>
+      <td><strong>Sementales Reproductores</strong></td>
+      <td>Son los caballos y toros sementales aprobados para la cubrición comunal. Pastan en la marisma pero <strong>NO descuentan plazas del cupo</strong> del ganadero.</td>
+    </tr>
+    <tr>
+      <td><strong>Rastras al pie</strong></td>
+      <td>Son los potros o terneros lactantes que acompañan a su madre. Mientras sean crías lactantes, <strong>tampoco descuentan plazas de cupo</strong>.</td>
+    </tr>
+    <tr>
+      <td><strong>Bovinos sin nombre</strong></td>
+      <td>Por normativa zootécnica de vacuno, las vacas y toros <strong>no tienen nombre</strong>. Se identifican únicamente por su Crotal Oficial y su Plaza <code>HINxxx</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Salida Temporal</strong></td>
+      <td>Ocurre cuando una yegua o vaca sale temporalmente de la marisma para parir, curarse o ir a feria. Su plaza <strong>queda reservada</strong> y nadie puede ocuparla.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 3 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>3. Acceso al Sistema y Gestión de la Sesión</h1>
+
+<h2>3.1. Inicio de Sesión Oficial</h2>
+<p>
+  Para acceder a la plataforma, abre tu navegador web habitual (Google Chrome, Microsoft Edge, Firefox o Safari) y entra en la dirección web facilitada por el Ayuntamiento. Te aparecerá la ventana de acceso oficial:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/01_login_modal.png" alt="Pantalla de Acceso Oficial" />
+  <div class="screenshot-caption"><strong>Figura 3.1:</strong> Pantalla oficial de inicio de sesión con validación de credenciales municipales.</div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Introduce tu Nombre de Usuario:</strong> Escribe tu usuario municipal (por ejemplo, <code>antonio</code> o <code>candido</code>).
+  </div>
+</div>
+<div class="step-box">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Introduce tu Contraseña:</strong> Escribe tu clave secreta de acceso.
+  </div>
+</div>
+<div class="step-box">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Pulsa «Iniciar Sesión Oficial»:</strong> El sistema verificará tus credenciales y te dará acceso inmediato a la pantalla principal.
+  </div>
+</div>
+
+<div class="callout callout-warn">
+  <div class="callout-title">⚠️ Medida de Seguridad Municipal</div>
+  Si se introducen 5 contraseñas erróneas de forma consecutiva, el sistema bloqueará temporalmente el acceso durante 15 minutos por seguridad para evitar accesos no autorizados.
+</div>
+
+<h2>3.2. Conociendo la Cabecera Principal</h2>
+<p>
+  En la parte superior de la pantalla siempre tendrás visible la barra institucional del Ayuntamiento de Hinojos:
+</p>
+<ul>
+  <li><strong>Escudo de Hinojos:</strong> Pulsar sobre el escudo te regresa inmediatamente al Censo Equino.</li>
+  <li><strong>Pestañas de Navegación:</strong> <em>Equino (🐎), Bovino (🐂), Propietarios (👥), Histórico (🕒) y Ajustes (⚙️)</em>.</li>
+  <li><strong>Indicador de Servidor Activo:</strong> Un botón verde con punto luminoso que confirma que la base de datos municipal está conectada en tiempo real.</li>
+  <li><strong>Nombre y Rol del Usuario:</strong> Te muestra con qué usuario estás trabajando (ej. <em>Administrador del Sistema</em> o <em>Consulta</em>).</li>
+  <li><strong>Botón «Salir» (rojo):</strong> Cierra tu sesión de forma segura y limpia los datos de acceso del navegador. ¡Úsalo siempre al terminar en un ordenador compartido!</li>
+</ul>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 4 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>4. El Censo de Animales (Equinos y Bovinos)</h1>
+
+<p>
+  La pantalla principal de trabajo es el <strong>Listado del Censo</strong>. Se divide en dos secciones principales accesibles desde la cabecera: <strong>Equino</strong> (yeguas, caballos y potros) y <strong>Bovino</strong> (vacas y toros).
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/02_censo_equino.png" alt="Censo Equino Municipal" />
+  <div class="screenshot-caption"><strong>Figura 4.1:</strong> Tabla oficial de Censo Equino con numeración de plazas HIxxx, titulares, microchips, capas y botones de gestión.</div>
+</div>
+
+<h2>4.1. Filtros Rápidos y Buscador en Tiempo Real</h2>
+<p>
+  Justo encima de la tabla dispones de herramientas inteligentes para encontrar cualquier animal al instante:
+</p>
+<ul>
+  <li><strong>Buscador en Vivo:</strong> Escribe cualquier texto (número de plaza como <code>HI005</code>, nombre del animal como <code>BORGOÑA</code>, nombre del ganadero como <code>ABEL</code> o los últimos dígitos del chip). La tabla se filtrará automáticamente mientras escribes.</li>
+  <li><strong>Botones de Estado Rápido:</strong>
+    <ul>
+      <li><span class="pill pill-green">En Marisma</span>: Muestra únicamente los animales que están físicamente pastando en el campo.</li>
+      <li><span class="pill pill-amber">Fuera (Temporal)</span>: Muestra animales que han salido temporalmente pero que <strong>mantienen su plaza reservada</strong>.</li>
+      <li><span class="pill pill-red">Plazas Vacantes</span>: Muestra plazas que están legalmente adjudicadas a un ganadero pero que actualmente no tienen animal asignado.</li>
+      <li><span class="pill pill-purple">Con Rastra (Cría)</span>: Muestra únicamente las hembras que tienen una cría al pie lactando.</li>
+    </ul>
+  </li>
+  <li><strong>Selector de Campaña:</strong> El desplegable verde (ej. <code>Campaña: 2025-2026</code>) te permite cambiar de año ganadero con un solo clic para consultar censos históricos.</li>
+</ul>
+
+<h2>4.2. Censo Bovino: La Regla de los Animales Sin Nombre</h2>
+<p>
+  Al pulsar sobre la pestaña <strong>Bovino</strong>, la tabla se adapta a la normativa zootécnica de vacuno:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/03_censo_bovino.png" alt="Censo Bovino Municipal" />
+  <div class="screenshot-caption"><strong>Figura 4.2:</strong> Listado de Censo Bovino. Obsérvese que las vacas y toros no tienen nombre; se identifican por Plaza HINxxx y Crotal Oficial.</div>
+</div>
+
+<div class="callout callout-tip">
+  <div class="callout-title">💡 ¿Por qué no aparece el nombre en Bovinos?</div>
+  Por tradición zootécnica y normativa de trazabilidad en la Marisma de Hinojos, el ganado vacuno marismeño se identifica exclusivamente por el <strong>Crotal Oficial</strong> y su <strong>Plaza HINxxx</strong>. La columna "Nombre" no existe para evitar confusiones.
+</div>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 5 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>5. Guía Paso a Paso: Cómo Dar de Alta un Nuevo Animal</h1>
+
+<p>
+  Para adjudicar una nueva plaza o dar de alta un animal en el censo oficial, pulsa el botón verde <strong>«+ NUEVO ANIMAL»</strong> situado en la esquina superior derecha del listado.
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/11_modal_alta_animal.png" alt="Ventana de Alta con Paso 1 Bloqueante" />
+  <div class="screenshot-caption"><strong>Figura 5.1:</strong> Ventana de alta. El Paso 1 es obligatorio y comprueba duplicados históricos automáticamente.</div>
+</div>
+
+<h2>Sigue estos sencillos pasos:</h2>
+
+<div class="step-box">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Paso 1 Obligatorio (Identificador Primario):</strong><br>
+    Introduce el número de <strong>Microchip</strong> (para caballos/yeguas) o el <strong>Crotal Oficial</strong> (para vacas/toros).
+    <ul>
+      <li>Si el animal ya existe en la campaña actual, saldrá un aviso rojo bloqueante para impedir duplicados.</li>
+      <li>Si el animal estuvo en campañas anteriores, ¡el sistema lo reconocerá de inmediato y rellenará automáticamente su nombre, capa, sexo y ganadero!</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Selecciona el Ganadero Titular:</strong><br>
+    Despliega la lista y elige el ganadero al que se le adjudica la plaza. Solo se pueden seleccionar ganaderos que estén dados de alta oficialmente en la aplicación.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Comprueba el Número de Plaza:</strong><br>
+    El sistema te sugerirá el siguiente número correlativo disponible (ej. <code>HI063</code> para equinos o <code>HIN007</code> para bovinos). Si lo necesitas, puedes modificarlo manualmente.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Completa los Datos del Animal:</strong><br>
+    Rellena el nombre (solo en equinos), sexo (Macho o Hembra), fecha de nacimiento, capa (Castaña, Torda, Negra, Cárdena, etc.) y la fecha de última revisión por la guardería.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">5</div>
+  <div class="step-content">
+    <strong>Pestaña «Rastra (Cría al pie)» (Opcional):</strong><br>
+    Si la hembra tiene una cría lactante que entra con ella a la marisma, activa la casilla <em>"Tiene cría al pie"</em> y anota su crotal, capa y sexo. Recuerda: <strong>esta cría no gasta cupo de plazas</strong>.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">6</div>
+  <div class="step-content">
+    <strong>Pestaña «Documentos» y «Anotaciones» (Opcional):</strong><br>
+    Puedes adjuntar el PDF del Pasaporte DIE, Guías de Traslado o fotografías del hierro/marca, y añadir notas del cuaderno de campo.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-num">7</div>
+  <div class="step-content">
+    <strong>Pulsa «Registrar Animal»:</strong> El animal quedará registrado oficialmente y aparecerá al instante en el censo.
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 6 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>6. Ficha Oficial del Animal e Impresión con Escudo</h1>
+
+<p>
+  En cualquier momento puedes consultar el expediente completo de cualquier animal censado. Para ello, busca el animal en la tabla y pulsa sobre el <strong>icono del ojo (👁️)</strong> situado en la columna <em>Gestión</em>.
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/12_ficha_detalle_animal.png" alt="Ficha Oficial del Animal con Escudo de Hinojos" />
+  <div class="screenshot-caption"><strong>Figura 6.1:</strong> Ficha oficial imprimible con escudo municipal, plaza destacada, documentación adjunta y cuaderno de campo.</div>
+</div>
+
+<h2>¿Qué información contiene la Ficha Oficial?</h2>
+<ul>
+  <li><strong>Encabezado Oficial:</strong> Escudo heráldico del Ayuntamiento de Hinojos y número de plaza destacado (ej. <code>PLAZA HI001</code>).</li>
+  <li><strong>Datos Zootécnicos:</strong> Nombre, sexo, capa, microchip/crotal, fecha de nacimiento y código UELN.</li>
+  <li><strong>Titular y Estado de Presencia:</strong> Ganadero propietario, última fecha de revisión en campo y estado actual (<em>Dentro de la Marisma</em> o <em>Fuera Temporal</em>).</li>
+  <li><strong>Documentación Adjunta:</strong> Enlaces directos para descargar y ver los PDFs del Pasaporte DIE, Guías Sanitarias y certificados oficiales.</li>
+  <li><strong>Cuaderno de Campo Histórico:</strong> Registro cronológico de todas las anotaciones y revisiones realizadas por los guardas de la marisma.</li>
+</ul>
+
+<div class="callout callout-tip">
+  <div class="callout-title">🖨️ Cómo Imprimir la Ficha en Papel</div>
+  En la parte superior derecha de la ficha tienes el botón <strong>«Imprimir Ficha»</strong>. Al pulsarlo, el navegador abrirá el diálogo de impresión con un formato normalizado y limpio, listo para archivar en las carpetas municipales o entregarlo en mano al ganadero.
+</div>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 7 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>7. Trazabilidad de Movimientos: Salidas, Entradas y Bajas</h1>
+
+<p>
+  El control de entradas y salidas es fundamental para que la guardería municipal sepa en todo momento qué animales están dentro de Doñana y qué animales están fuera con plaza reservada.
+</p>
+<p>
+  Para registrar un movimiento, pulsa el botón con <strong>dos flechas horizontales (⇄)</strong> en la fila del animal.
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/15_modal_movimiento.png" alt="Ventana de Registro de Movimiento" />
+  <div class="screenshot-caption"><strong>Figura 7.1:</strong> Modal de registro de movimiento. Permite elegir si la salida es temporal (reserva plaza) o definitiva (libera plaza).</div>
+</div>
+
+<h2>Cómo gestionar una Salida de la Marisma:</h2>
+<ul>
+  <li>
+    <strong>Salida Temporal (Paridera, cura, feria):</strong><br>
+    Marca la opción <strong>«No, mantener plaza reservada»</strong>. El animal cambia a estado <span class="pill pill-amber">Fuera (Temporal)</span>. Su plaza continúa reservada para ese animal y el ganadero conserva su derecho de reingreso intacto.
+  </li>
+  <li>
+    <strong>Baja o Salida Definitiva:</strong><br>
+    Marca la opción <strong>«Sí, dejar plaza sin ocupar»</strong>. El animal pasa al archivo histórico y la plaza queda como <span class="pill pill-red">Plaza Vacante</span> a nombre del ganadero para que pueda introducir otro animal cuando lo desee.
+  </li>
+</ul>
+
+<h2>Consulta del Histórico de Movimientos</h2>
+<p>
+  Pulsando sobre la pestaña <strong>Histórico</strong> en la cabecera superior, accederás al <strong>Libro Oficial de Trazabilidad</strong>:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/05_historico_movimientos.png" alt="Histórico y Libro Cronológico de Movimientos" />
+  <div class="screenshot-caption"><strong>Figura 7.2:</strong> Registro cronológico de todos los movimientos de entradas, salidas y bajas con filtro por campaña o trayectoria histórica completa.</div>
+</div>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 8 & 9 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>8. Intercambio y Permuta de Plazas entre Ganaderos</h1>
+
+<p>
+  Cuando dos ganaderos acuerdan intercambiar sus animales de plaza, no es necesario dar de baja y volver a crear los animales. Dispones de la herramienta oficial <strong>«INTERCAMBIAR PLAZAS»</strong> situada sobre la tabla de censo.
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/14_permutas_plazas.png" alt="Modal de Intercambio de Plazas" />
+  <div class="screenshot-caption"><strong>Figura 8.1:</strong> Asistente de permuta directa de plazas con confirmación en 1 clic.</div>
+</div>
+
+<ol>
+  <li>Selecciona la <strong>Plaza A</strong> (primer animal y ganadero).</li>
+  <li>Selecciona la <strong>Plaza B</strong> (segundo animal y ganadero).</li>
+  <li>Revisa el recuadro verde de <strong>Vista Previa del Resultado de la Permuta</strong> para verificar que los cambios son exactamente los deseados.</li>
+  <li>Escribe una breve observación (ej. <em>"Permuta acordada en asamblea de la asociación"</em>).</li>
+  <li>Pulsa <strong>«Confirmar Intercambio»</strong>: el sistema actualiza ambas fichas y registra la operación en la auditoría municipal.</li>
+</ol>
+
+<div class="page-break"></div>
+<h1>9. Directorio de Ganaderos y Asociaciones</h1>
+
+<p>
+  Accediendo a la pestaña <strong>Propietarios</strong> encontrarás el censo de todos los ganaderos dados de alta en la campaña activa:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/04_propietarios_ganaderos.png" alt="Censo de Propietarios y Ganaderos" />
+  <div class="screenshot-caption"><strong>Figura 9.1:</strong> Tarjetas de ganaderos con DNI validado, REGA de explotación, asociación y recuento de animales censados.</div>
+</div>
+
+<h2>Asistente de Validación de DNI / CIF (Módulo 23)</h2>
+<p>
+  Al dar de alta o editar un ganadero con el botón <strong>«+ NUEVO PROPIETARIO»</strong>, la aplicación cuenta con un asistente inteligente: si introduces el DNI sin letra o con una letra errónea, aparecerá un botón azul: <strong>«Asignar letra oficial correcta: [X]»</strong> que calculará matemáticamente la letra oficial según las normas del Ministerio del Interior.
+</p>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 10 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>10. Libro Oficial de Sementales (Reproductores)</h1>
+
+<p>
+  Pulsando el botón amarillo <strong>«SEMENTALES»</strong> accederás al registro municipal de sementales reproductores autorizados:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/13_sementales_reproductores.png" alt="Libro de Sementales Reproductores" />
+  <div class="screenshot-caption"><strong>Figura 10.1:</strong> Registro municipal de caballos y toros sementales aprobados para la cubrición comunal en la Marisma de Hinojos.</div>
+</div>
+
+<div class="callout callout-important">
+  <div class="callout-title">⚠️ Regla Municipal Fundamental</div>
+  Los sementales registrados en este libro pastan en la marisma para garantizar la raza y la cubrición del ganado comunal, pero <strong>NO descuentan plazas de cupo</strong> del ganadero titular.
+</div>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 11 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>11. Panel de Ajustes y Administración (Solo Administradores)</h1>
+
+<p>
+  Si tienes rol de <strong>ADMINISTRADOR</strong>, tendrás acceso a la pestaña <strong>Ajustes</strong>, que contiene cinco herramientas fundamentales para la gestión del municipio:
+</p>
+
+<h2>11.1. Estadísticas de la Marisma</h2>
+<div class="screenshot-card">
+  <img src="screenshots/06_ajustes_estadisticas.png" alt="Estadísticas de la Marisma" />
+  <div class="screenshot-caption"><strong>Figura 11.1:</strong> Cuadro de mandos con porcentaje de ocupación, plazas asignadas vs vacantes y recuento de animales pastando.</div>
+</div>
+<p>
+  Permite auditar el cumplimiento del cupo oficial (ej. 29 plazas), distinguiendo entre animales titulares, plazas vacantes, y animales que no computan plaza (sementales y rastras lactantes).
+</p>
+
+<h2>11.2. Gestión de Campañas y Asistente de Traspaso</h2>
+<div class="screenshot-card">
+  <img src="screenshots/16_asistente_campanas.png" alt="Gestión de Campañas Anuales" />
+  <div class="screenshot-caption"><strong>Figura 11.2:</strong> Listado cronológico de campañas ganaderas y botón de creación de nueva campaña con clonación asistida.</div>
+</div>
+<p>
+  Al pulsar <strong>«+ Crear nueva campaña con traspaso»</strong> se abre el asistente inteligente que te permite crear el nuevo año ganadero (ej. <code>2026-2027</code>) clonando automáticamente todos los socios y sus plazas de la campaña anterior, ahorrando horas de trabajo manual.
+</p>
+
+<h2>11.3. Gestión de Usuarios y Accesos</h2>
+<div class="screenshot-card">
+  <img src="screenshots/08_ajustes_usuarios.png" alt="Gestión de Usuarios" />
+  <div class="screenshot-caption"><strong>Figura 11.3:</strong> Panel de usuarios del sistema. Permite dar de alta a nuevos empleados, guardas o administrativos.</div>
+</div>
+<p>
+  Puedes crear usuarios con dos niveles de permiso:
+</p>
+<ul>
+  <li><strong>ADMINISTRADOR:</strong> Control total (alta, edición, borrado, permutas, ajustes, campañas, copias de seguridad).</li>
+  <li><strong>CONSULTA:</strong> Solo lectura. Puede buscar, ver fichas y consultar censos pero no puede modificar datos ni acceder a ajustes.</li>
+</ul>
+
+<h2>11.4. Auditoría Municipal</h2>
+<div class="screenshot-card">
+  <img src="screenshots/09_ajustes_auditoria.png" alt="Auditoría Municipal" />
+  <div class="screenshot-caption"><strong>Figura 11.4:</strong> Registro de auditoría con buscador en tiempo real y exportación de informe oficial a CSV para Excel.</div>
+</div>
+<p>
+  Cada vez que alguien da de alta un animal, cambia una plaza, registra una salida o descarga una copia de seguridad, queda grabado con su nombre, fecha, hora e IP. Nadie puede borrar este registro.
+</p>
+
+<h2>11.5. Copias de Seguridad (.ZIP) en 1 Clic</h2>
+<div class="screenshot-card">
+  <img src="screenshots/10_ajustes_backup.png" alt="Copia de Seguridad en 1 Clic" />
+  <div class="screenshot-caption"><strong>Figura 11.5:</strong> Módulo de respaldo y restauración en archivo .ZIP completo.</div>
+</div>
+<p>
+  Pulsando el botón verde <strong>«Descargar Copia de Seguridad Completa (.ZIP)»</strong>, obtendrás en un solo archivo todo el censo, la base de datos, el historial de auditoría y todas las fotos y pasaportes PDF guardados. ¡Ideal para guardarlo en un lápiz USB o disco externo del Ayuntamiento!
+</p>
+
+<!-- ========================================== -->
+<!-- CAPÍTULO 12 & 13 -->
+<!-- ========================================== -->
+<div class="page-break"></div>
+<h1>12. Exportación de Libros Oficiales a Excel / OpenDocument (.ODS)</h1>
+
+<p>
+  En la parte superior de las tablas de Equino y Bovino encontrarás el botón <strong>«Exportar Excel»</strong>:
+</p>
+<ul>
+  <li>
+    <strong>Libro Oficial de Equinos (.ODS):</strong> Genera un libro maestro completo con <strong>4 hojas de cálculo</strong> normalizadas según el modelo oficial del Ayuntamiento de Hinojos:
+    <ol>
+      <li><code>Censo Equino</code>: Listado completo de animales censados y plazas adjudicadas.</li>
+      <li><code>Sementales</code>: Registro oficial de sementales reproductores autorizados.</li>
+      <li><code>Expediente Histórico</code>: Relación detallada de todas las anotaciones y revisiones.</li>
+      <li><code>Libro de Movimientos</code>: Historial cronológico de entradas, salidas y bajas.</li>
+    </ol>
+  </li>
+  <li>
+    <strong>Censo Oficial de Bovinos (.ODS):</strong> Genera la plantilla municipal exacta de 1 hoja con todos los crotales, capas y plazas vacunas.
+  </li>
+</ul>
+
+<div class="callout callout-tip">
+  <div class="callout-title">💡 Total compatibilidad</div>
+  Los archivos generados en formato <code>.ods</code> se abren de forma nativa e impecable tanto en <strong>Microsoft Excel</strong> como en <strong>LibreOffice Calc</strong> y Google Sheets.
+</div>
+
+<div class="page-break"></div>
+<h1>13. Preguntas Frecuentes y Solución de Problemas (FAQ)</h1>
+
+<h3>¿Qué hago si al intentar dar de alta un animal me dice que el Microchip ya existe?</h3>
+<p>
+  Si el aviso es en color rojo, significa que ese animal ya tiene una plaza asignada en la <strong>campaña activa</strong> actual. Comprueba la lista de animales para verificar en qué plaza se encuentra. Si el animal estaba en una campaña pasada, el aviso será verde y simplemente te precargará sus datos sin bloquearte.
+</p>
+
+<h3>Un ganadero ha sacado una yegua a parir fuera de la marisma. ¿Debo darle de baja?</h3>
+<p>
+  <strong>¡NO!</strong> No debes darle de baja. Debes registrar un movimiento de tipo <strong>«Salida de Marisma»</strong> y seleccionar <strong>«No, mantener plaza reservada»</strong>. De este modo, la yegua figurará como <span class="pill pill-amber">Fuera (Temporal)</span>, nadie podrá ocupar su plaza y conservará su derecho a reingresar cuando la cría esté lista.
+</p>
+
+<h3>¿Cómo puedo imprimir la lista completa de equinos o bovinos?</h3>
+<p>
+  Puedes pulsar el botón <strong>«Exportar Excel»</strong> para descargar el libro oficial e imprimirlo desde Excel o LibreOffice, o bien utilizar la opción de imprimir del navegador (<code>Ctrl + P</code>) que cuenta con estilos optimizados para papel.
+</p>
+
+<h3>¿Qué ocurre si se va la luz o se apaga el ordenador mientras trabajo?</h3>
+<p>
+  No te preocupes. La aplicación se comunica de forma continua con la base de datos municipal en la nube. Cada vez que pulsas "Guardar", los datos quedan asegurados inmediatamente en el servidor.
+</p>
+
+<h3>¿A quién debo acudir en caso de incidencia informática?</h3>
+<p>
+  Para cualquier duda técnica, fallo de conexión o restablecimiento de contraseñas de usuario, ponte en contacto con el <strong>Departamento de Informática del Ayuntamiento de Hinojos</strong> o el administrador del sistema en el correo <code>informatica@hinojos.es</code>.
+</p>
+
+</body>
+</html>

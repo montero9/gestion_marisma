@@ -11,6 +11,7 @@ import { MovementModal } from './components/MovementModal';
 import { OwnersView } from './components/OwnersView';
 import { StallionsView } from './components/StallionsView';
 import { HistoryMovementsView } from './components/HistoryMovementsView';
+import { EntradasView } from './components/EntradasView';
 import { SettingsView } from './components/SettingsView';
 import { LoginModal } from './components/LoginModal';
 import { AssignPlazaModal } from './components/AssignPlazaModal';
@@ -25,7 +26,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
     try {
       const saved = localStorage.getItem('marisma_active_tab') as NavTab | null;
-      if (saved && ['EQUINO', 'BOVINO', 'PROPIETARIOS', 'HISTORICO', 'AJUSTES'].includes(saved)) {
+      if (saved && ['EQUINO', 'BOVINO', 'PROPIETARIOS', 'ENTRADAS', 'HISTORICO', 'AJUSTES'].includes(saved)) {
         return saved;
       }
     } catch {}
@@ -768,6 +769,23 @@ export default function App() {
           />
         )}
 
+        {/* TAB: ENTRADAS */}
+        {currentTab === 'ENTRADAS' && (
+          <EntradasView
+            activeCampaign={activeCampaign}
+            currentUser={currentUser!}
+            animals={animals.filter((a) => a.campana === activeCampaign && !a.esPlazaVacante)}
+            owners={owners.filter((o) => o.campana === activeCampaign)}
+            onOpenAnimalDetail={handleViewAnimalClick}
+            onAnimalsUpdated={async () => {
+              try {
+                const updated = await ApiService.getAnimals();
+                setAnimals(updated);
+              } catch {}
+            }}
+          />
+        )}
+
         {/* TAB: HISTÓRICO */}
         {currentTab === 'HISTORICO' && (
           <HistoryMovementsView
@@ -875,6 +893,10 @@ export default function App() {
             handleEditAnimalClick(animal);
           }}
           movements={movements}
+          onOpenEntrada={(_remesaId) => {
+            setIsDetailModalOpen(false);
+            handleSelectTab('ENTRADAS');
+          }}
         />
       )}
 
