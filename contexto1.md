@@ -102,10 +102,22 @@ La barra superior oficial del Ayuntamiento de Hinojos (`Header.tsx`) cuenta con 
 
 ### G. Módulo «Copia de Seguridad» (`BackupView.tsx`)
 - Respaldo completo bajo demanda en 1 solo clic en formato `.ZIP` (contiene volcado de datos, manifiesto oficial y documentos).
+- Estadísticas en tiempo real conectadas a **Supabase Cloud (PostgreSQL)** y Supabase Storage.
 - Restauración segura con generación automática de copia de emergencia previa a la sobreescritura.
 - Pestaña oficial en Ajustes: **Copia de Seguridad**.
 
-### H. Exportación de Libros Oficiales ODS (LibreOffice / OpenDocument)
+### H. Módulo «Permisos de Entrada a la Marisma» (`EntradasView.tsx` / `EntradaEditorModal.tsx`)
+- **Paginación:** Listado oficial paginado a un máximo de 15 entradas por página con barra de navegación completa.
+- **Blindaje Anti-Duplicado y Bloqueo Preventivo:** Estado transitorio `ENVIANDO` en la base de datos para impedir envíos concurrentes y soportar recargas involuntarias del navegador con autorrefresco en segundo plano.
+- **Modal Bloqueante:** Cuenta atrás interactiva (~10s) con protección de cierre accidental de ventana (`beforeunload`).
+- **Multiselección:** Selección continua de acompañantes y equinos a recoger en el editor sin cierre de menús.
+
+### I. Censo de Propietarios (`OwnersView.tsx`)
+- **Formato Tabla:** Tabla estructurada estilo censo de equinos con cabecera oscura `#111827`.
+- **Columnas optimizadas:** Nombre y Apellidos (ordenable), Asociación (ordenable), Ganado asignado en campaña (ordenable con apertura de fichas) y Gestión (edición y baja).
+- **Sub-fila expandible:** Consulta rápida de contacto (DNI, REGA, Teléfono, Email, Dirección) y visualización en cuadrícula de todos los animales asignados en la campaña activa con acceso directo a sus fichas.
+
+### J. Exportación de Libros Oficiales ODS (LibreOffice / OpenDocument)
 - **Equinos:** Libro maestro de 4 hojas (`Censo Equino`, `Sementales`, `Expediente Histórico`, `Libro de Movimientos`).
 - **Bovinos:** Libro oficial de 1 hoja idéntica a la plantilla municipal.
 - **Entradas a la Marisma:** Generación oficial de la hoja de remesa semanal para el Espacio Natural.
