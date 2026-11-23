@@ -10,6 +10,7 @@ import {
   Association,
   AuditLog,
   EntradaRemesa,
+  EstadoRemesa,
   EntradaPersona,
   EntradaAnimal,
 } from '../src/types/marisma.js';
@@ -839,6 +840,32 @@ export const dataAdapter = {
     }
 
     return (await this.getEntradaRemesaById(remesa.id)) || remesa;
+  },
+
+  async updateEntradaRemesaEstado(
+    id: string,
+    updates: {
+      estado: EstadoRemesa;
+      fechaEnvioEmail?: string | null;
+      destinatariosEmail?: string | null;
+      archivoOdsNombre?: string | null;
+      archivoOdsUrl?: string | null;
+    }
+  ): Promise<void> {
+    const rowUpdates: Record<string, any> = {
+      estado: updates.estado,
+      actualizado_en: new Date().toISOString(),
+    };
+    if (updates.fechaEnvioEmail !== undefined) rowUpdates.fecha_envio_email = updates.fechaEnvioEmail;
+    if (updates.destinatariosEmail !== undefined) rowUpdates.destinatarios_email = updates.destinatariosEmail;
+    if (updates.archivoOdsNombre !== undefined) rowUpdates.archivo_ods_nombre = updates.archivoOdsNombre;
+    if (updates.archivoOdsUrl !== undefined) rowUpdates.archivo_ods_url = updates.archivoOdsUrl;
+
+    const { error } = await supabase
+      .from('entradas_remesas')
+      .update(rowUpdates)
+      .eq('id', id);
+    if (error) throw error;
   },
 
   async deleteEntradaRemesa(id: string): Promise<void> {

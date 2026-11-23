@@ -188,7 +188,7 @@ export interface AuditLog {
 // ==============================================================================
 
 export type TipoRemesa = 'ORDINARIA' | 'EXTRAORDINARIA';
-export type EstadoRemesa = 'BORRADOR' | 'GENERADO' | 'ENVIADO';
+export type EstadoRemesa = 'BORRADOR' | 'GENERADO' | 'ENVIANDO' | 'ENVIADO';
 
 export interface EntradaAnimal {
   id: string;

@@ -3,6 +3,7 @@ import { EntradaRemesa, Animal, Owner, User } from '../types/marisma';
 import { ApiService } from '../services/apiService';
 import { EntradaEditorModal } from './EntradaEditorModal';
 import { EntradaConsultaPersonaModal } from './EntradaConsultaPersonaModal';
+import { EnviandoEmailModal } from './EnviandoEmailModal';
 import {
   FileText,
   Plus,
@@ -22,6 +23,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Eye,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // Formateador para badge de remesa enviada: "ENVIADO MARTES 17/11/26"
@@ -68,20 +71,36 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
 
   // Acciones en curso
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [sendingModalData, setSendingModalData] = useState<{ isOpen: boolean; titulo: string }>({
+    isOpen: false,
+    titulo: '',
+  });
 
   useEffect(() => {
     loadRemesas();
   }, [activeCampaign]);
 
-  const loadRemesas = async () => {
-    setIsLoading(true);
+  // Si alguna remesa está en estado ENVIANDO (ej. tras recargar la página), refrescar automáticamente cada 3s
+  useEffect(() => {
+    const hasEnviando = remesas.some((r) => r.estado === 'ENVIANDO');
+    if (!hasEnviando) return;
+
+    const intervalId = setInterval(() => {
+      loadRemesas(true); // silent refresh sin activar loader general
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [remesas, activeCampaign]);
+
+  const loadRemesas = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await ApiService.getEntradas(activeCampaign);
       setRemesas(data);
     } catch (err: any) {
       console.error('Error cargando remesas de entrada:', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -132,12 +151,16 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
     if (!window.confirm(confirmMsg)) return;
 
     setProcessingId(remesa.id);
+    setSendingModalData({ isOpen: true, titulo: remesa.tituloOficial });
     try {
       const res = await ApiService.enviarEntradaEmail(remesa.id);
+      setSendingModalData({ isOpen: false, titulo: '' });
       alert(`¡Correo enviado con éxito a Doñana!\n\nDestinatarios: ${res.sendResult?.recipients?.join(', ')}`);
       loadRemesas();
     } catch (err: any) {
+      setSendingModalData({ isOpen: false, titulo: '' });
       alert('Error al enviar el correo a Doñana: ' + err.message);
+      loadRemesas();
     } finally {
       setProcessingId(null);
     }
@@ -183,7 +206,10 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
   // Filtrado de remesas
   const filteredRemesas = useMemo(() => {
     return remesas.filter((r) => {
-      if (filterEstado !== 'TODOS' && r.estado !== filterEstado) {
+      if (filterEstado === 'BORRADOR' && r.estado !== 'BORRADOR' && r.estado !== 'ENVIANDO') {
+        return false;
+      }
+      if (filterEstado === 'ENVIADO' && r.estado !== 'ENVIADO') {
         return false;
       }
       if (searchTerm.trim()) {
@@ -207,6 +233,27 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
       return true;
     });
   }, [remesas, filterEstado, searchTerm]);
+
+  // Paginación (máximo 15 remesas por página)
+  const ITEMS_PER_PAGE = 15;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCampaign, filterEstado, searchTerm]);
+
+  const totalPages = Math.ceil(filteredRemesas.length / ITEMS_PER_PAGE) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedRemesas = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRemesas.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredRemesas, currentPage]);
 
   return (
     <div className="space-y-6">
@@ -269,7 +316,7 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Borradores ({remesas.filter((r) => r.estado === 'BORRADOR').length})
+            Borradores ({remesas.filter((r) => r.estado === 'BORRADOR' || r.estado === 'ENVIANDO').length})
           </button>
           <button
             type="button"
@@ -327,7 +374,7 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
         </div>
       ) : (
         <div className="space-y-2.5">
-          {filteredRemesas.map((remesa) => {
+          {paginatedRemesas.map((remesa) => {
             const personas = remesa.personas || [];
             const countRepasar = personas.filter((p) => p.esTitular && p.faena === 'REPASAR').length;
             const countSoltar = personas.filter((p) => p.esTitular && p.faena === 'SOLTAR').length;
@@ -356,17 +403,20 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                       <h3 className="text-sm font-bold text-gray-900 group-hover:text-emerald-900 transition truncate">
                         {remesa.tituloOficial}
                       </h3>
-                      <span
-                        className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shrink-0 ${
-                          remesa.estado === 'ENVIADO'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : 'bg-amber-100 text-amber-900 border border-amber-300'
-                        }`}
-                      >
-                        {remesa.estado === 'ENVIADO'
-                          ? formatEnviadoBadge(remesa.fechaEnvioEmail || remesa.actualizadoEn || remesa.creadoEn)
-                          : 'BORRADOR'}
-                      </span>
+                      {remesa.estado === 'ENVIANDO' ? (
+                        <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shrink-0 bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1.5 animate-pulse shadow-xs">
+                          <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                          ENVIANDO...
+                        </span>
+                      ) : remesa.estado === 'ENVIADO' ? (
+                        <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shrink-0 bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {formatEnviadoBadge(remesa.fechaEnvioEmail || remesa.actualizadoEn || remesa.creadoEn)}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shrink-0 bg-amber-100 text-amber-900 border border-amber-300">
+                          BORRADOR
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 truncate mt-0.5">
                       {remesa.diasTexto} · Campaña {remesa.campana}
@@ -422,20 +472,32 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                     <span className="hidden lg:inline text-[11px]">ODS</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDirectSendEmail(remesa)}
-                    disabled={isProcessing}
-                    className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs disabled:opacity-50"
-                    title={remesa.estado === 'ENVIADO' ? 'Reenviar a Doñana' : 'Enviar a Doñana'}
-                  >
-                    {isProcessing ? (
+                  {remesa.estado === 'ENVIANDO' ? (
+                    <button
+                      type="button"
+                      disabled={true}
+                      className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-not-allowed opacity-90 shadow-2xs"
+                      title="Envío en progreso a Doñana..."
+                    >
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Send className="w-3.5 h-3.5" />
-                    )}
-                    <span className="text-[11px]">{remesa.estado === 'ENVIADO' ? 'Reenviar' : 'Enviar'}</span>
-                  </button>
+                      <span className="text-[11px]">Enviando...</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDirectSendEmail(remesa)}
+                      disabled={isProcessing}
+                      className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs disabled:opacity-50"
+                      title={remesa.estado === 'ENVIADO' ? 'Reenviar a Doñana' : 'Enviar a Doñana'}
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      <span className="text-[11px]">{remesa.estado === 'ENVIADO' ? 'Reenviar' : 'Enviar'}</span>
+                    </button>
+                  )}
 
                   {remesa.estado === 'BORRADOR' && (
                     <button
@@ -453,8 +515,13 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleEdit(remesa)}
-                    className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                    title="Editar remesa"
+                    disabled={remesa.estado === 'ENVIANDO'}
+                    className={`p-1.5 rounded-lg transition ${
+                      remesa.estado === 'ENVIANDO'
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer'
+                    }`}
+                    title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Editar remesa'}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -462,8 +529,13 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleDelete(remesa)}
-                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                    title="Eliminar remesa y sus documentos"
+                    disabled={isProcessing || remesa.estado === 'ENVIANDO'}
+                    className={`p-1.5 rounded-lg transition ${
+                      remesa.estado === 'ENVIANDO'
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
+                    }`}
+                    title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Eliminar remesa y sus documentos'}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -471,6 +543,85 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Paginación de Remesas (máximo 15 por página) */}
+      {!isLoading && filteredRemesas.length > ITEMS_PER_PAGE && (
+        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+          <div className="text-xs text-gray-500 font-medium">
+            Mostrando{' '}
+            <span className="font-bold text-gray-800">
+              {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+            </span>{' '}
+            a{' '}
+            <span className="font-bold text-gray-800">
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredRemesas.length)}
+            </span>{' '}
+            de{' '}
+            <span className="font-bold text-gray-800">
+              {filteredRemesas.length}
+            </span>{' '}
+            solicitudes
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Anterior</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Si hay más de 7 páginas, compactar con puntos suspensivos
+                if (
+                  totalPages > 7 &&
+                  page !== 1 &&
+                  page !== totalPages &&
+                  Math.abs(page - currentPage) > 2
+                ) {
+                  if (page === 2 || page === totalPages - 1) {
+                    return (
+                      <span key={page} className="px-1 text-gray-400 text-xs font-bold">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`min-w-8 h-8 px-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center ${
+                      currentPage === page
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -496,6 +647,12 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
         owners={owners}
         activeCampaign={activeCampaign}
         onVerEntrada={(remesa) => handleView(remesa)}
+      />
+
+      {/* Modal bloqueante de envío de entradas con cuenta atrás */}
+      <EnviandoEmailModal
+        isOpen={sendingModalData.isOpen}
+        tituloOficial={sendingModalData.titulo}
       />
     </div>
   );

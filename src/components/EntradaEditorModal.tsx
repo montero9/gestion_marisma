@@ -8,6 +8,7 @@ import {
   User,
 } from '../types/marisma';
 import { ApiService } from '../services/apiService';
+import { EnviandoEmailModal } from './EnviandoEmailModal';
 import {
   X,
   Plus,
@@ -137,6 +138,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
   // Buscador de ganaderos censados
   const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
   const [activePersonaForOwner, setActivePersonaForOwner] = useState<string | null>(null);
+  const [activeAcompananteVehicleId, setActiveAcompananteVehicleId] = useState<string | null>(null);
 
   // Carga inicial o reseteo
   useEffect(() => {
@@ -155,6 +157,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       setActivePersonaForAnimal(null);
       setOwnerSearchQuery('');
       setActivePersonaForOwner(null);
+      setActiveAcompananteVehicleId(null);
     }
   }, [isOpen, remesa]);
 
@@ -391,6 +394,62 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
     });
   };
 
+  // Añadir Acompañante desde el censo a un vehículo/titular concreto (sin cerrar el buscador)
+  const handleAddAcompananteFromOwner = (titular: EntradaPersona, owner: Owner) => {
+    // Control de duplicado: verificar si ya está asignado en este mismo día
+    const isDup = (formData.personas || []).some(
+      (p) =>
+        p.fecha === titular.fecha &&
+        p.nombreApellidos.trim().toUpperCase() === owner.nombreCompleto.trim().toUpperCase()
+    );
+    if (isDup) {
+      alert(
+        `La persona "${owner.nombreCompleto}" ya figura registrada en este mismo día (${currentDay?.label}).\n\nUna persona no puede registrarse dos veces el mismo día.`
+      );
+      return;
+    }
+
+    // Comprobar si ya existe una fila de acompañante vacía para este titular
+    const existingEmptyAcomp = (formData.personas || []).find(
+      (p) =>
+        p.fecha === titular.fecha &&
+        p.titularId === titular.id &&
+        !p.esTitular &&
+        !p.nombreApellidos.trim()
+    );
+
+    if (existingEmptyAcomp) {
+      handleUpdatePersona(existingEmptyAcomp.id, {
+        nombreApellidos: owner.nombreCompleto,
+        telefono: owner.telefono || '',
+        ownerId: owner.id || null,
+      });
+    } else {
+      const newAcomp: EntradaPersona = {
+        id: `per-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        remesaId: formData.id,
+        diaSemana: titular.diaSemana,
+        fecha: titular.fecha,
+        esTitular: false,
+        titularId: titular.id,
+        nombreApellidos: owner.nombreCompleto,
+        ownerId: owner.id || null,
+        faena: titular.faena,
+        finca: titular.finca,
+        matriculas: titular.matriculas || '',
+        telefono: owner.telefono || '',
+        ordenFila: (formData.personas || []).length + 1,
+        animales: [],
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        personas: [...(prev.personas || []), newAcomp],
+      }));
+    }
+    // NOTA: Para acompañantes, NO cerramos el buscador para permitir seguir añadiendo más acompañantes seguidos
+  };
+
   // Añadir Equino a una persona
   const handleAddAnimalToPersona = (personaId: string, animal: Animal) => {
     const persona = (formData.personas || []).find((p) => p.id === personaId);
@@ -418,8 +477,13 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       animales: [...(persona.animales || []), newAnimal],
     });
 
-    setAnimalSearchQuery('');
-    setActivePersonaForAnimal(null);
+    // Si es RECOGER, NO cerramos el listado para permitir marcar varios equinos seguidos
+    if (persona.faena === 'RECOGER') {
+      // Mantenemos el buscador abierto
+    } else {
+      setAnimalSearchQuery('');
+      setActivePersonaForAnimal(null);
+    }
   };
 
   // Añadir Equino Manual (no censado / excepcional)
@@ -682,12 +746,15 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                     : 'Nueva Solicitud de Entrada a Marisma'}
                 </h2>
                 <span
-                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                    formData.estado === 'ENVIADO'
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                    formData.estado === 'ENVIANDO'
+                      ? 'bg-blue-400 text-blue-950 animate-pulse'
+                      : formData.estado === 'ENVIADO'
                       ? 'bg-emerald-400 text-emerald-950'
                       : 'bg-amber-400 text-amber-950'
                   }`}
                 >
+                  {formData.estado === 'ENVIANDO' && <Loader2 className="w-3 h-3 animate-spin" />}
                   {formData.estado}
                 </span>
               </div>
@@ -820,6 +887,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                             setSelectedDayIndex(idx);
                             setActivePersonaForAnimal(null);
                             setActivePersonaForOwner(null);
+                            setActiveAcompananteVehicleId(null);
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                             selectedDayIndex === idx
@@ -1129,6 +1197,29 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                               {/* Desplegable Buscador de Equinos */}
                               {activePersonaForAnimal === titular.id && (
                                 <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
+                                      <span>🐎</span>
+                                      <span>
+                                        {titular.faena === 'RECOGER'
+                                          ? 'Seleccionar Equinos a Recoger (puede marcar varios sin cerrar)'
+                                          : 'Seleccionar Equino a Soltar'}
+                                      </span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActivePersonaForAnimal(null);
+                                        setAnimalSearchQuery('');
+                                      }}
+                                      className="px-2 py-0.5 text-[10px] font-bold text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 rounded transition cursor-pointer flex items-center gap-1"
+                                      title="Cerrar buscador de equinos"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      <span>Cerrar</span>
+                                    </button>
+                                  </div>
+
                                   <div className="relative">
                                     <Search className="w-4 h-4 text-emerald-700 absolute left-2.5 top-2" />
                                     <input
@@ -1268,17 +1359,127 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                                 <span>Acompañantes en este vehículo ({acompanantes.length})</span>
                               </span>
                               {!readOnly && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddAcompanante(titular)}
-                                  className="text-[11px] font-bold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer"
-                                  title="Añadir acompañante que viaja en este mismo vehículo"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>Añadir Acompañante a este Vehículo</span>
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveAcompananteVehicleId(
+                                        activeAcompananteVehicleId === titular.id ? null : titular.id
+                                      );
+                                      setOwnerSearchQuery('');
+                                    }}
+                                    className="text-[11px] font-bold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="Buscar en el censo y marcar varios acompañantes seguidos sin cerrar el listado"
+                                  >
+                                    <Search className="w-3 h-3 text-emerald-700" />
+                                    <span>Buscar en Censo</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddAcompanante(titular)}
+                                    className="text-[11px] font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="Añadir fila de acompañante no censado manualmente"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>+ Manual</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
+
+                            {/* Buscador Desplegable para Acompañantes (multiselección continua sin cierre) */}
+                            {activeAcompananteVehicleId === titular.id && (
+                              <div className="p-3 bg-white border border-emerald-300 rounded-xl space-y-2 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>Seleccionar Acompañantes del Censo (puede marcar varios sin cerrar)</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveAcompananteVehicleId(null);
+                                      setOwnerSearchQuery('');
+                                    }}
+                                    className="px-2 py-0.5 text-[10px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded transition cursor-pointer flex items-center gap-1"
+                                    title="Cerrar buscador de acompañantes"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    <span>Cerrar</span>
+                                  </button>
+                                </div>
+
+                                <div className="relative">
+                                  <Search className="w-4 h-4 text-emerald-700 absolute left-2.5 top-2" />
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    value={ownerSearchQuery}
+                                    onChange={(e) => setOwnerSearchQuery(e.target.value)}
+                                    placeholder="Buscar por Nombre, Apellidos o DNI..."
+                                    className="w-full text-xs pl-8 pr-3 py-1.5 bg-white border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
+                                  />
+                                </div>
+
+                                {filteredOwners.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {!ownerSearchQuery.trim() && (
+                                      <p className="text-[11px] text-emerald-800 font-semibold italic px-1">
+                                        Ganaderos censados (primeros resultados · pulse para añadir a este vehículo):
+                                      </p>
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pt-1">
+                                      {filteredOwners.map((owner) => (
+                                        <button
+                                          key={owner.id}
+                                          type="button"
+                                          onClick={() => handleAddAcompananteFromOwner(titular, owner)}
+                                          className="p-2 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-left transition flex items-center justify-between cursor-pointer group"
+                                        >
+                                          <div>
+                                            <p className="text-xs font-bold text-emerald-950 group-hover:text-emerald-900">
+                                              {owner.nombreCompleto}
+                                            </p>
+                                            <p className="text-[10px] text-gray-500 font-mono">
+                                              {owner.dniCif ? `DNI: ${owner.dniCif}` : ''}
+                                              {owner.telefono ? ` · Tel: ${owner.telefono}` : ''}
+                                            </p>
+                                          </div>
+                                          <Plus className="w-4 h-4 text-emerald-700 shrink-0" />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : ownerSearchQuery.trim() ? (
+                                  <div className="p-2 text-center text-xs text-gray-500 space-y-1">
+                                    <p className="italic">No se encontró ningún ganadero en el censo con ese criterio.</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleAddAcompanante(titular);
+                                        setFormData((prev) => {
+                                          const personas = [...(prev.personas || [])];
+                                          const last = personas[personas.length - 1];
+                                          if (last) {
+                                            last.nombreApellidos = ownerSearchQuery.trim();
+                                          }
+                                          return { ...prev, personas };
+                                        });
+                                        setOwnerSearchQuery('');
+                                      }}
+                                      className="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+                                    >
+                                      Añadir "{ownerSearchQuery.trim()}" como acompañante
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-emerald-800 italic">
+                                    Escriba el nombre, apellidos o DNI para filtrar y seleccionar acompañantes.
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {acompanantes.length === 0 ? (
                               <p className="text-[11px] text-gray-500 italic pl-1">
@@ -1323,12 +1524,13 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                                             <button
                                               type="button"
                                               onClick={() => {
-                                                setActivePersonaForOwner(
-                                                  activePersonaForOwner === acomp.id ? null : acomp.id
+                                                setActiveAcompananteVehicleId(
+                                                  activeAcompananteVehicleId === titular.id ? null : titular.id
                                                 );
                                                 setOwnerSearchQuery('');
                                               }}
                                               className="text-[10px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
+                                              title="Buscar en el censo para este vehículo"
                                             >
                                               <Search className="w-2.5 h-2.5" />
                                               <span>Buscar en Censo</span>
@@ -1360,90 +1562,6 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                                         />
                                       </div>
                                     </div>
-
-                                    {/* Buscador Desplegable para Acompañante */}
-                                    {activePersonaForOwner === acomp.id && (
-                                      <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 mt-2">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
-                                            <Users className="w-3.5 h-3.5 text-emerald-700" />
-                                            <span>Seleccionar Ganadero Censado para Acompañante</span>
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setActivePersonaForOwner(null);
-                                              setOwnerSearchQuery('');
-                                            }}
-                                            className="p-1 text-gray-400 hover:text-gray-700 rounded-md transition cursor-pointer"
-                                          >
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-
-                                        <div className="relative">
-                                          <Search className="w-4 h-4 text-emerald-700 absolute left-2.5 top-2" />
-                                          <input
-                                            type="text"
-                                            autoFocus
-                                            value={ownerSearchQuery}
-                                            onChange={(e) => setOwnerSearchQuery(e.target.value)}
-                                            placeholder="Buscar por Nombre, Apellidos o DNI..."
-                                            className="w-full text-xs pl-8 pr-3 py-1.5 bg-white border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
-                                          />
-                                        </div>
-
-                                        {filteredOwners.length > 0 ? (
-                                          <div className="space-y-1">
-                                            {!ownerSearchQuery.trim() && (
-                                              <p className="text-[11px] text-emerald-800 font-semibold italic px-1">
-                                                Ganaderos censados (primeros resultados · escriba para filtrar por nombre o DNI):
-                                              </p>
-                                            )}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pt-1">
-                                              {filteredOwners.map((owner) => (
-                                                <button
-                                                  key={owner.id}
-                                                  type="button"
-                                                  onClick={() => {
-                                                    handleSelectOwner(acomp.id, owner);
-                                                    setActivePersonaForOwner(null);
-                                                    setOwnerSearchQuery('');
-                                                  }}
-                                                  className="p-2 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-left transition flex items-center justify-between cursor-pointer group"
-                                                >
-                                                  <div>
-                                                    <p className="text-xs font-bold text-emerald-950 group-hover:text-emerald-900">
-                                                      {owner.nombreCompleto}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-500 font-mono">
-                                                      {owner.dniCif ? `DNI: ${owner.dniCif}` : ''}
-                                                      {owner.telefono ? ` · Tel: ${owner.telefono}` : ''}
-                                                    </p>
-                                                  </div>
-                                                  <Plus className="w-4 h-4 text-emerald-700 shrink-0" />
-                                                </button>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        ) : ownerSearchQuery.trim() ? (
-                                          <div className="p-2 text-center text-xs text-gray-500 space-y-1">
-                                            <p className="italic">No se encontró ningún ganadero en el censo con ese criterio.</p>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                handleUpdatePersona(acomp.id, { nombreApellidos: ownerSearchQuery.trim() });
-                                                setActivePersonaForOwner(null);
-                                                setOwnerSearchQuery('');
-                                              }}
-                                              className="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
-                                            >
-                                              Usar "{ownerSearchQuery.trim()}" como nombre
-                                            </button>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -1588,7 +1706,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSave(false)}
-                disabled={isSaving || isSending}
+                disabled={isSaving || isSending || formData.estado === 'ENVIANDO'}
                 className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
               >
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
@@ -1612,10 +1730,10 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
             <button
               type="button"
               onClick={handleSendEmail}
-              disabled={isSaving || isSending}
+              disabled={isSaving || isSending || formData.estado === 'ENVIANDO'}
               className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
             >
-              {isSending ? (
+              {isSending || formData.estado === 'ENVIANDO' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Enviando a Doñana...</span>
@@ -1630,6 +1748,12 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal bloqueante de envío de entradas */}
+      <EnviandoEmailModal
+        isOpen={isSending}
+        tituloOficial={formData.tituloOficial}
+      />
     </div>
   );
 };

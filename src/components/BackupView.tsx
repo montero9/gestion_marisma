@@ -23,15 +23,22 @@ interface BackupViewProps {
 }
 
 interface BackupStats {
-  databaseSize: number;
-  databaseLastModified: string;
+  databaseSize?: number;
+  databaseLastModified?: string;
+  databaseProvider?: string;
+  storageProvider?: string;
   documentsCount: number;
-  documentsTotalSize: number;
-  animalsCount: number;
-  movementsCount: number;
-  ownersCount: number;
-  auditLogsCount: number;
-  campaignsCount: number;
+  documentsTotalSize?: number;
+  animalsCount?: number;
+  totalAnimals?: number;
+  movementsCount?: number;
+  totalMovements?: number;
+  ownersCount?: number;
+  totalOwners?: number;
+  auditLogsCount?: number;
+  totalAuditLogs?: number;
+  campaignsCount?: number;
+  totalCampaigns?: number;
 }
 
 export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotify }) => {
@@ -191,30 +198,30 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-gray-100">
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Base de Datos</span>
-              <div className="font-bold text-gray-900 text-sm mt-1">{formatBytes(stats.databaseSize)}</div>
+              <div className="font-bold text-gray-900 text-sm mt-1">Supabase Cloud</div>
               <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-3 h-3" /> SQLite WAL Consolidado
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> PostgreSQL Activo
               </span>
             </div>
 
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Documentos Adjuntos</span>
-              <div className="font-bold text-gray-900 text-sm mt-1">{stats.documentsCount} archivos</div>
-              <span className="text-[10px] text-gray-500 mt-0.5 block">{formatBytes(stats.documentsTotalSize)} en disco</span>
+              <div className="font-bold text-gray-900 text-sm mt-1">{stats.documentsCount ?? 0} archivos</div>
+              <span className="text-[10px] text-gray-500 mt-0.5 block">Supabase Storage</span>
             </div>
 
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Censo y Movimientos</span>
               <div className="font-bold text-gray-900 text-sm mt-1">
-                {stats.animalsCount} animales · {stats.movementsCount} movs
+                {(stats.animalsCount ?? stats.totalAnimals ?? 0)} animales · {(stats.movementsCount ?? stats.totalMovements ?? 0)} movs
               </div>
-              <span className="text-[10px] text-gray-500 mt-0.5 block">{stats.ownersCount} ganaderos registrados</span>
+              <span className="text-[10px] text-gray-500 mt-0.5 block">{(stats.ownersCount ?? stats.totalOwners ?? 0)} ganaderos registrados</span>
             </div>
 
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Registro de Auditoría</span>
-              <div className="font-bold text-gray-900 text-sm mt-1">{stats.auditLogsCount} eventos</div>
-              <span className="text-[10px] text-gray-500 mt-0.5 block">{stats.campaignsCount} campañas archivadas</span>
+              <div className="font-bold text-gray-900 text-sm mt-1">{(stats.auditLogsCount ?? stats.totalAuditLogs ?? 0)} eventos</div>
+              <span className="text-[10px] text-gray-500 mt-0.5 block">{(stats.campaignsCount ?? stats.totalCampaigns ?? 0)} campañas registradas</span>
             </div>
           </div>
         )}
@@ -257,7 +264,7 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 space-y-2 text-xs text-emerald-950">
               <span className="font-bold block text-emerald-900">Contenido del archivo ZIP de copia:</span>
               <ul className="space-y-1 text-[11px] list-disc list-inside text-emerald-800">
-                <li><span className="font-mono font-semibold">marisma.db</span>: Base de datos SQLite consolidada (WAL checkpoint).</li>
+                <li><span className="font-mono font-semibold">database_export.json</span>: Base de datos íntegra exportada desde Supabase PostgreSQL (censo, ganaderos, movimientos, auditoría, permisos y configuración).</li>
                 <li><span className="font-mono font-semibold">manifest.json</span>: Certificado municipal con fecha, recuentos y versión.</li>
                 <li><span className="font-mono font-semibold">documents/</span>: Todos los PDFs adjuntos, certificados y fotografías.</li>
               </ul>
@@ -293,10 +300,10 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-1 text-xs text-amber-900">
               <span className="font-bold flex items-center gap-1 text-amber-800">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Protección Automática de Emergencia:
+                Protección Automática y Verificación:
               </span>
               <p className="text-[11px] text-amber-800 leading-relaxed">
-                Antes de sobreescribir la base de datos, el servidor genera de forma automática una copia de seguridad previa de emergencia (<span className="font-mono">marisma.db.bak</span>) para evitar cualquier pérdida accidental.
+                Antes de sobreescribir los datos, el sistema realiza una copia de seguridad y verificación automática previa para garantizar la integridad del censo municipal.
               </p>
             </div>
           </div>

@@ -8,6 +8,11 @@ import {
   Mail,
   MapPin,
   ChevronDown,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Eye,
   Edit2,
   Trash2,
   X,
@@ -59,24 +64,83 @@ export const OwnersView: React.FC<OwnersViewProps> = ({
   const [targetOwnerForAnimals, setTargetOwnerForAnimals] = useState<string>('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Ordenación y filtros
+  const [selectedAsociacionFilter, setSelectedAsociacionFilter] = useState<string>('TODAS');
+  const [sortField, setSortField] = useState<'nombre' | 'dni' | 'animales' | 'asociacion'>('nombre');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: 'nombre' | 'dni' | 'animales' | 'asociacion') => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Obtener animales asignados a un propietario en la campaña activa
+  const getOwnerAnimals = (owner: Owner) => {
+    return animals.filter(
+      (a) =>
+        (a.propietario.trim().toLowerCase() === owner.nombreCompleto.trim().toLowerCase() ||
+          (a.rastra &&
+            a.rastra.propietarioRastra.trim().toLowerCase() === owner.nombreCompleto.trim().toLowerCase())) &&
+        a.campana === activeCampaign
+    );
+  };
+
   // Filtered owners: pertenecen a la campaña activa (o sin campaña asignada para compatibilidad)
   const campaignOwners = useMemo(() => {
     return owners.filter((o) => !o.campana || o.campana === activeCampaign);
   }, [owners, activeCampaign]);
 
-  // Filtered owners by search query
+  // Total de animales censados pertenecientes a ganaderos de la campaña
+  const totalCampañaAnimalsCount = useMemo(() => {
+    return campaignOwners.reduce((acc, o) => acc + getOwnerAnimals(o).length, 0);
+  }, [campaignOwners, animals, activeCampaign]);
+
+  // Filtered and sorted owners
   const filteredOwners = useMemo(() => {
-    if (!search.trim()) return campaignOwners;
-    const q = search.toLowerCase();
-    return campaignOwners.filter(
-      (o) =>
-        o.nombreCompleto.toLowerCase().includes(q) ||
-        o.dniCif.toLowerCase().includes(q) ||
-        o.telefono.includes(q) ||
-        (o.asociacion && o.asociacion.toLowerCase().includes(q)) ||
-        (o.codigoRega && o.codigoRega.toLowerCase().includes(q))
-    );
-  }, [campaignOwners, search]);
+    let list = campaignOwners;
+
+    if (selectedAsociacionFilter !== 'TODAS') {
+      list = list.filter((o) => (o.asociacion || '') === selectedAsociacionFilter);
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (o) =>
+          o.nombreCompleto.toLowerCase().includes(q) ||
+          o.dniCif.toLowerCase().includes(q) ||
+          o.telefono.includes(q) ||
+          (o.asociacion && o.asociacion.toLowerCase().includes(q)) ||
+          (o.codigoRega && o.codigoRega.toLowerCase().includes(q)) ||
+          (o.municipio && o.municipio.toLowerCase().includes(q))
+      );
+    }
+
+    return [...list].sort((a, b) => {
+      if (sortField === 'nombre') {
+        const comp = a.nombreCompleto.trim().localeCompare(b.nombreCompleto.trim(), 'es', { sensitivity: 'base' });
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+      if (sortField === 'dni') {
+        const comp = (a.dniCif || '').trim().localeCompare((b.dniCif || '').trim(), 'es', { sensitivity: 'base' });
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+      if (sortField === 'asociacion') {
+        const comp = (a.asociacion || '').trim().localeCompare((b.asociacion || '').trim(), 'es', { sensitivity: 'base' });
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+      if (sortField === 'animales') {
+        const countA = getOwnerAnimals(a).length;
+        const countB = getOwnerAnimals(b).length;
+        return sortDirection === 'asc' ? countA - countB : countB - countA;
+      }
+      return 0;
+    });
+  }, [campaignOwners, search, selectedAsociacionFilter, sortField, sortDirection, animals, activeCampaign]);
 
   const handleOpenAdd = () => {
     setSelectedOwnerForModal(null);
@@ -203,160 +267,342 @@ export const OwnersView: React.FC<OwnersViewProps> = ({
         </div>
       </div>
 
-      {/* Owners List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredOwners.map((owner) => {
-          // Get animals belonging to this owner
-          const ownerAnimals = animals.filter(
-            (a) =>
-              a.propietario.trim().toLowerCase() === owner.nombreCompleto.trim().toLowerCase() ||
-              (a.rastra &&
-                a.rastra.propietarioRastra.trim().toLowerCase() ===
-                  owner.nombreCompleto.trim().toLowerCase())
-          );
-          const currentCampaignAnimals = ownerAnimals.filter((a) => a.campana === activeCampaign);
-          const isExpanded = expandedOwnerId === owner.id;
+      {/* Filtros secundarios y métricas */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-1">
+            Asociación:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedAsociacionFilter('TODAS')}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+              selectedAsociacionFilter === 'TODAS'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            Todas ({campaignOwners.length})
+          </button>
+          {associations.map((assoc) => {
+            const count = campaignOwners.filter((o) => o.asociacion === assoc.nombre).length;
+            return (
+              <button
+                key={assoc.id}
+                type="button"
+                onClick={() => setSelectedAsociacionFilter(assoc.nombre)}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                  selectedAsociacionFilter === assoc.nombre
+                    ? 'bg-blue-700 text-white shadow-xs'
+                    : 'bg-white text-blue-900 hover:bg-blue-50 border border-blue-200'
+                }`}
+              >
+                <span>{assoc.nombre}</span>
+                <span className="text-[10px] opacity-80">({count})</span>
+              </button>
+            );
+          })}
+        </div>
 
-          return (
-            <div
-              key={owner.id}
-              className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden hover:border-emerald-300 transition"
-            >
-              <div className="p-4 sm:p-5 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 leading-snug">
-                      {owner.nombreCompleto}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-1">
-                      <span className="font-mono font-semibold bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                        DNI/CIF: {owner.dniCif}
-                      </span>
-                      {owner.codigoRega && (
-                        <span className="font-mono text-[11px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                          REGA: {owner.codigoRega}
-                        </span>
-                      )}
-                      {owner.asociacion && (
-                        <span className="text-[11px] bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200 font-semibold flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-blue-700" />
-                          <span>{owner.asociacion}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
+        <div className="text-[11px] font-semibold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-lg px-2.5 py-1">
+          Total ganado en campaña {activeCampaign}: <span className="font-bold">{totalCampañaAnimalsCount} animales</span>
+        </div>
+      </div>
 
-                  {!isReadOnly && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEdit(owner)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Editar datos del propietario"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleInitiateDeleteOwner(owner)}
-                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded"
-                        title="Eliminar ganadero"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Contact info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span>{owner.telefono || 'Sin teléfono'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span className="truncate">{owner.email || 'Sin email'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:col-span-2">
-                    <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span className="truncate">
-                      {owner.direccion ? `${owner.direccion}, ` : ''}
-                      {owner.municipio || 'Hinojos'}
-                    </span>
-                  </div>
-                </div>
-
-                {owner.notas && (
-                  <p className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded border border-gray-100">
-                    &quot;{owner.notas}&quot;
-                  </p>
-                )}
-
-                {/* Animal count indicator & accordion button */}
-                <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                  <div className="text-xs font-semibold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    <span>
-                      {currentCampaignAnimals.length} animales registrados en Campaña {activeCampaign}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 hover:text-emerald-950 transition cursor-pointer"
-                  >
-                    <span>{isExpanded ? 'Ocultar ganado' : 'Ver ganado'}</span>
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Accordion List of Animals */}
-                {isExpanded && (
-                  <div className="pt-3 border-t border-dashed border-gray-200 space-y-2">
-                    {currentCampaignAnimals.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic py-2 text-center">
-                        No tiene animales asignados en la campaña {activeCampaign}.
-                      </p>
+      {/* Main Owners Table Card */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr className="bg-[#111827] text-white border-b border-gray-800 text-[11px] font-bold tracking-wider uppercase leading-tight select-none">
+                {/* 1. Nombre y Apellidos (Sortable) */}
+                <th
+                  onClick={() => handleSort('nombre')}
+                  className="py-2.5 px-4 min-w-[240px] cursor-pointer hover:bg-gray-800 transition"
+                  title="Ordenar por Nombre y Apellidos"
+                >
+                  <div className="inline-flex items-center gap-1.5">
+                    <span>NOMBRE Y APELLIDOS</span>
+                    {sortField === 'nombre' ? (
+                      sortDirection === 'asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <ArrowDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      )
                     ) : (
-                      <div className="divide-y divide-gray-100 bg-gray-50/60 rounded-lg border border-gray-200 overflow-hidden">
-                        {currentCampaignAnimals.map((ani) => (
-                          <div
-                            key={ani.id}
-                            className="p-2.5 flex items-center justify-between text-xs hover:bg-white transition"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-emerald-900 bg-emerald-100/70 px-1.5 py-0.5 rounded text-[11px]">
-                                {ani.plazaNumero}
-                              </span>
-                              <span className="font-bold text-gray-900">{ani.nombreAnimal}</span>
-                              <span className="text-[10px] text-gray-500 font-medium">
-                                ({ani.tipo} · {ani.capa})
-                              </span>
-                              {ani.rastra && (
-                                <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.2 rounded">
-                                  🍼 Cría
-                                </span>
-                              )}
-                            </div>
-
-                            <button
-                              onClick={() => onViewAnimal(ani)}
-                              className="text-xs text-emerald-700 hover:text-emerald-950 font-semibold underline"
-                            >
-                              Ver Ficha
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                      <ArrowUpDown className="w-3 h-3 text-gray-400 shrink-0 opacity-70" />
                     )}
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                </th>
+
+                {/* 2. Asociación (Sortable) */}
+                <th
+                  onClick={() => handleSort('asociacion')}
+                  className="py-2.5 px-3 whitespace-nowrap min-w-[140px] cursor-pointer hover:bg-gray-800 transition"
+                  title="Ordenar por Asociación"
+                >
+                  <div className="inline-flex items-center gap-1.5">
+                    <span>ASOCIACIÓN</span>
+                    {sortField === 'asociacion' ? (
+                      sortDirection === 'asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <ArrowDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-gray-400 shrink-0 opacity-70" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 3. Ganado Asignado (Sortable) */}
+                <th
+                  onClick={() => handleSort('animales')}
+                  className="py-2.5 px-3 text-center whitespace-nowrap min-w-[140px] cursor-pointer hover:bg-gray-800 transition"
+                  title="Ordenar por cantidad de animales asignados"
+                >
+                  <div className="inline-flex items-center gap-1.5 justify-center">
+                    <span>GANADO ({activeCampaign})</span>
+                    {sortField === 'animales' ? (
+                      sortDirection === 'asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <ArrowDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-gray-400 shrink-0 opacity-70" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 4. Acciones */}
+                <th className="py-2.5 px-3 text-center whitespace-nowrap w-[110px]">
+                  <span>GESTIÓN</span>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredOwners.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-gray-500">
+                    <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                    <p className="text-base font-semibold text-gray-700">No se encontraron propietarios</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Pruebe a cambiar el término de búsqueda o el filtro de asociación.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredOwners.map((owner) => {
+                  const currentCampaignAnimals = getOwnerAnimals(owner);
+                  const isExpanded = expandedOwnerId === owner.id;
+
+                  return (
+                    <React.Fragment key={owner.id}>
+                      <tr
+                        className={`hover:bg-gray-50 transition border-b border-gray-100 ${
+                          isExpanded ? 'bg-emerald-50/20' : ''
+                        }`}
+                      >
+                        {/* 1. Nombre y Apellidos */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
+                              className={`p-1 rounded hover:bg-gray-200 transition cursor-pointer shrink-0 ${
+                                isExpanded ? 'text-emerald-700 bg-emerald-100' : 'text-gray-400'
+                              }`}
+                              title={isExpanded ? 'Ocultar ganado' : 'Ver ganado'}
+                            >
+                              <ChevronRight
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-90' : ''
+                                }`}
+                              />
+                            </button>
+                            <div className="min-w-0">
+                              <span className="font-bold text-gray-900 block leading-tight truncate">
+                                {owner.nombreCompleto}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Asociación */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {owner.asociacion ? (
+                            <span className="text-[11px] bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200 font-semibold inline-flex items-center gap-1">
+                              <Building2 className="w-3 h-3 text-blue-700 shrink-0" />
+                              <span>{owner.asociacion}</span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
+                        </td>
+
+                        {/* 3. Ganado Asignado */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer ${
+                              currentCampaignAnimals.length > 0
+                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200 shadow-2xs'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                            title="Haz clic para ver/ocultar los animales asignados a este titular"
+                          >
+                            <span>{currentCampaignAnimals.length}</span>
+                            <span className="text-[10px] font-normal uppercase">
+                              {currentCampaignAnimals.length === 1 ? 'animal' : 'animales'}
+                            </span>
+                            <ChevronDown
+                              className={`w-3 h-3 transition-transform duration-200 ${
+                                isExpanded ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                        </td>
+
+                        {/* 4. Acciones */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            {!isReadOnly && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(owner)}
+                                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                  title="Editar datos del propietario"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleInitiateDeleteOwner(owner)}
+                                  className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                  title="Eliminar propietario"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Sub-fila expandible con el listado de animales */}
+                      {isExpanded && (
+                        <tr className="bg-slate-50 border-b-2 border-emerald-300">
+                          <td colSpan={4} className="p-3 sm:p-4">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs">
+                              <div className="pb-2.5 mb-2.5 border-b border-gray-100">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-800">
+                                      Animales censados de {owner.nombreCompleto} ({activeCampaign})
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                      Total: {currentCampaignAnimals.length}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedOwnerId(null)}
+                                    className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                                  >
+                                    ✕ Cerrar
+                                  </button>
+                                </div>
+
+                                {/* Ficha rápida de contacto del titular al expandir */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1.5">
+                                  {owner.dniCif && (
+                                    <span className="font-mono bg-gray-100 text-gray-800 px-1.5 py-0.2 rounded text-[11px]">
+                                      <strong>DNI/CIF:</strong> {owner.dniCif}
+                                    </span>
+                                  )}
+                                  {owner.codigoRega && (
+                                    <span className="font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded text-[11px]">
+                                      <strong>REGA:</strong> {owner.codigoRega}
+                                    </span>
+                                  )}
+                                  {owner.telefono && (
+                                    <span className="inline-flex items-center gap-1 text-gray-700">
+                                      <Phone className="w-3 h-3 text-gray-400" />
+                                      {owner.telefono}
+                                    </span>
+                                  )}
+                                  {owner.email && (
+                                    <span className="inline-flex items-center gap-1 text-gray-600">
+                                      <Mail className="w-3 h-3 text-gray-400" />
+                                      {owner.email}
+                                    </span>
+                                  )}
+                                  {(owner.direccion || owner.municipio) && (
+                                    <span className="inline-flex items-center gap-1 text-gray-600">
+                                      <MapPin className="w-3 h-3 text-gray-400" />
+                                      {owner.direccion ? `${owner.direccion}, ` : ''}{owner.municipio || 'Hinojos'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {currentCampaignAnimals.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic py-3 text-center">
+                                  Este titular no tiene animales censados en la campaña activa {activeCampaign}.
+                                </p>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+                                  {currentCampaignAnimals.map((ani) => (
+                                    <div
+                                      key={ani.id}
+                                      className="p-2.5 rounded-lg border border-gray-200 bg-gray-50/60 hover:bg-emerald-50/40 hover:border-emerald-300 transition flex items-center justify-between text-xs"
+                                    >
+                                      <div className="min-w-0 pr-2">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-mono font-black text-emerald-900 bg-emerald-100 px-1.5 py-0.5 rounded text-[11px]">
+                                            {ani.plazaNumero}
+                                          </span>
+                                          <span className="font-bold text-gray-900 truncate">
+                                            {ani.nombreAnimal || 'Sin Nombre'}
+                                          </span>
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 mt-1 truncate">
+                                          {ani.tipo} · {ani.capa || 'Capa no def.'} · {ani.identificacion1 || 'Sin Chip'}
+                                        </div>
+                                        {ani.rastra && (
+                                          <span className="inline-block mt-1 bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300">
+                                            🍼 Rastra: {ani.rastra.nombre || ani.rastra.rastrasChip}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => onViewAnimal(ani)}
+                                        className="px-2.5 py-1.5 bg-white hover:bg-emerald-700 hover:text-white text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                                        title="Ver ficha completa del animal"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>Ficha</span>
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Owner Modal */}

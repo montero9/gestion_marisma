@@ -101,7 +101,7 @@ class ApiClient {
    */
   public async request<T = any>(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestInit & { timeoutMs?: number } = {},
     maxRetries = 6
   ): Promise<T> {
     let retries = 0;
@@ -110,8 +110,9 @@ class ApiClient {
     while (retries < maxRetries) {
       try {
         const controller = new AbortController();
-        // Timeout más amplio si el servidor puede estar suspendido (15 segundos)
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        // Timeout configurable (por defecto 20 segundos, o mayor para envíos de correo u operaciones pesadas)
+        const timeoutMs = options.timeoutMs || 25000;
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const headers: Record<string, string> = {
           ...(options.headers as Record<string, string>),

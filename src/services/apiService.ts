@@ -527,6 +527,7 @@ export const ApiService = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ destinatariosOverride }),
+      timeoutMs: 60000,
     });
   },
 

@@ -75287,6 +75287,18 @@ var dataAdapter = {
     }
     return await this.getEntradaRemesaById(remesa.id) || remesa;
   },
+  async updateEntradaRemesaEstado(id, updates) {
+    const rowUpdates = {
+      estado: updates.estado,
+      actualizado_en: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    if (updates.fechaEnvioEmail !== void 0) rowUpdates.fecha_envio_email = updates.fechaEnvioEmail;
+    if (updates.destinatariosEmail !== void 0) rowUpdates.destinatarios_email = updates.destinatariosEmail;
+    if (updates.archivoOdsNombre !== void 0) rowUpdates.archivo_ods_nombre = updates.archivoOdsNombre;
+    if (updates.archivoOdsUrl !== void 0) rowUpdates.archivo_ods_url = updates.archivoOdsUrl;
+    const { error: error2 } = await supabase.from("entradas_remesas").update(rowUpdates).eq("id", id);
+    if (error2) throw error2;
+  },
   async deleteEntradaRemesa(id) {
     try {
       const { data: aniRows } = await supabase.from("entradas_animales").select("id, animal_id, guia_documento_id, guia_archivo_url").eq("remesa_id", id);
@@ -76358,17 +76370,32 @@ app.get("/api/admin/backup/stats", requireAdmin, async (_req, res) => {
       dataAdapter.getUsers(),
       dataAdapter.getAuditLogs()
     ]);
+    const totalDocuments = animals.reduce(
+      (acc, a) => acc + (Array.isArray(a.documentos) ? a.documentos.length : 0),
+      0
+    );
     res.json({
+      databaseSize: 1048576,
       databaseSizeBytes: 0,
-      databaseSizeFormatted: "Supabase Cloud Postgres",
+      databaseSizeFormatted: "Supabase Cloud (PostgreSQL)",
+      databaseProvider: "Supabase Cloud (PostgreSQL)",
+      storageProvider: "Supabase Storage Bucket",
       totalAnimals: animals.length,
+      animalsCount: animals.length,
       totalOwners: owners.length,
+      ownersCount: owners.length,
       totalMovements: movements.length,
+      movementsCount: movements.length,
       totalCampaigns: campaigns.length,
+      campaignsCount: campaigns.length,
       totalStallions: stallions.length,
+      stallionsCount: stallions.length,
       totalUsers: users.length,
+      usersCount: users.length,
       totalAuditLogs: audit.length,
-      documentsCount: 0,
+      auditLogsCount: audit.length,
+      documentsCount: totalDocuments,
+      documentsTotalSize: 0,
       documentsSizeBytes: 0,
       documentsSizeFormatted: "Supabase Storage Bucket",
       lastModified: (/* @__PURE__ */ new Date()).toISOString()
@@ -76541,42 +76568,70 @@ app.post("/api/entradas/:id/enviar-email", async (req, res) => {
   try {
     const remesa = await dataAdapter.getEntradaRemesaById(req.params.id);
     if (!remesa) return res.status(404).json({ error: "Remesa no encontrada" });
-    const { destinatariosOverride } = req.body;
-    const odsBuffer = await generateEntradaOds(remesa);
-    let currentUser = null;
-    if (req.user) {
-      currentUser = await dataAdapter.getUserById(req.user.id);
+    if (remesa.estado === "ENVIANDO") {
+      const lastUpdate = remesa.actualizadoEn ? new Date(remesa.actualizadoEn).getTime() : 0;
+      const now = Date.now();
+      if (now - lastUpdate < 12e4) {
+        return res.status(409).json({
+          error: "La remesa ya se est\xE1 enviando a Do\xF1ana en este momento. Por favor, espere unos segundos a que finalice el proceso."
+        });
+      }
     }
-    if (!currentUser) {
-      currentUser = {
-        id: req.user?.id || "admin",
-        username: req.user?.username || "admin",
-        nombreCompleto: "Usuario Administrador",
-        rol: "ADMINISTRADOR",
-        cargo: "Responsable",
-        email: "",
-        avatarInitials: "AD",
-        activo: true
-      };
+    const previousEstado = (remesa.estado === "ENVIANDO" ? "BORRADOR" : remesa.estado) || "BORRADOR";
+    await dataAdapter.updateEntradaRemesaEstado(remesa.id, { estado: "ENVIANDO" });
+    remesa.estado = "ENVIANDO";
+    try {
+      const { destinatariosOverride } = req.body;
+      const odsBuffer = await generateEntradaOds(remesa);
+      let currentUser = null;
+      if (req.user) {
+        currentUser = await dataAdapter.getUserById(req.user.id);
+      }
+      if (!currentUser) {
+        currentUser = {
+          id: req.user?.id || "admin",
+          username: req.user?.username || "admin",
+          nombreCompleto: "Usuario Administrador",
+          rol: "ADMINISTRADOR",
+          cargo: "Responsable",
+          email: "",
+          avatarInitials: "AD",
+          activo: true
+        };
+      }
+      const sendResult = await sendEntradaEmail({
+        remesa,
+        odsBuffer,
+        destinatariosOverride,
+        user: currentUser
+      });
+      const fechaEnvioEmail = (/* @__PURE__ */ new Date()).toISOString();
+      const destinatariosEmail = sendResult.recipients.join(", ");
+      const archivoOdsNombre = remesa.archivoOdsNombre || `${(remesa.tituloOficial || "Permisos_Marisma").replace(/[^\w.-]/g, "_")}.ods`;
+      await dataAdapter.updateEntradaRemesaEstado(remesa.id, {
+        estado: "ENVIADO",
+        fechaEnvioEmail,
+        destinatariosEmail,
+        archivoOdsNombre
+      });
+      remesa.estado = "ENVIADO";
+      remesa.fechaEnvioEmail = fechaEnvioEmail;
+      remesa.destinatariosEmail = destinatariosEmail;
+      remesa.archivoOdsNombre = archivoOdsNombre;
+      await auditLog(req, "ENVIO_PERMISOS_DONANA", "ENTRADA", remesa.id, {
+        titulo: remesa.tituloOficial,
+        destinatarios: sendResult.recipients,
+        bcc: sendResult.bcc,
+        messageId: sendResult.messageId
+      });
+      res.json({ success: true, remesa, sendResult });
+    } catch (sendError) {
+      console.error("Error durante el env\xEDo de la remesa, revirtiendo estado en BD:", sendError);
+      await dataAdapter.updateEntradaRemesaEstado(remesa.id, { estado: previousEstado }).catch((revErr) => {
+        console.error("Error al revertir estado de remesa:", revErr);
+      });
+      throw sendError;
     }
-    const sendResult = await sendEntradaEmail({
-      remesa,
-      odsBuffer,
-      destinatariosOverride,
-      user: currentUser
-    });
-    remesa.estado = "ENVIADO";
-    remesa.fechaEnvioEmail = (/* @__PURE__ */ new Date()).toISOString();
-    remesa.destinatariosEmail = sendResult.recipients.join(", ");
-    remesa.archivoOdsNombre = remesa.archivoOdsNombre || `${(remesa.tituloOficial || "Permisos_Marisma").replace(/[^\w.-]/g, "_")}.ods`;
-    const updated = await dataAdapter.saveEntradaRemesa(remesa);
-    await auditLog(req, "ENVIO_PERMISOS_DONANA", "ENTRADA", remesa.id, {
-      titulo: remesa.tituloOficial,
-      destinatarios: sendResult.recipients,
-      bcc: sendResult.bcc,
-      messageId: sendResult.messageId
-    });
-    res.json({ success: true, remesa: updated, sendResult });
   } catch (error2) {
     console.error("Error enviando remesa por email:", error2);
     res.status(500).json({ error: error2.message });

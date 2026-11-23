@@ -88,22 +88,22 @@
 
   .cover-body {
     text-align: center;
-    margin: 40px 0;
+    margin: 30px 0;
   }
 
   .cover-title {
-    font-size: 26pt;
+    font-size: 25pt;
     font-weight: 900;
     color: #0f172a;
     line-height: 1.2;
-    margin: 0 0 15px 0;
+    margin: 0 0 12px 0;
   }
 
   .cover-subtitle {
-    font-size: 13pt;
+    font-size: 12.5pt;
     color: #047857;
     font-weight: 600;
-    margin: 0 0 25px 0;
+    margin: 0 0 20px 0;
     line-height: 1.4;
   }
 
@@ -149,7 +149,7 @@
 
   /* Encabezados y Secciones */
   h1 {
-    font-size: 18pt;
+    font-size: 17pt;
     font-weight: 800;
     color: #065f46;
     border-bottom: 2.5px solid #065f46;
@@ -161,7 +161,7 @@
   }
 
   h2 {
-    font-size: 13pt;
+    font-size: 12.5pt;
     font-weight: 700;
     color: #0f172a;
     margin-top: 20px;
@@ -325,20 +325,6 @@
   .screenshot-caption strong {
     color: #065f46;
   }
-
-  /* Badge pills */
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 7.5pt;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-  .badge-green { background-color: #d1fae5; color: #065f46; }
-  .badge-blue { background-color: #dbeafe; color: #1e40af; }
-  .badge-amber { background-color: #fef3c7; color: #92400e; }
-  .badge-purple { background-color: #f3e8ff; color: #6b21a8; }
 </style>
 </head>
 <body>
@@ -356,15 +342,15 @@
   <div class="cover-body">
     <span class="cover-badge">Documento de Ingeniería & Transferencia de Software</span>
     <h1 class="cover-title" style="border:none; margin-top:15px;">MANUAL TÉCNICO Y ARQUITECTURA DEL SISTEMA</h1>
-    <h2 class="cover-subtitle" style="border:none; padding:0;">Gestión Ganadera, Censo Zootécnico y Control de Plazas Comunales<br>Marisma de Hinojos (Parque Nacional de Doñana)</h2>
-    <p style="text-align:center; color:#64748b; font-size:9pt; margin:0;">Plataforma Web Fullstack · Node.js 24 · Express · React 19 · TypeScript 5.8 · Supabase PostgreSQL · Vercel Serverless</p>
+    <h2 class="cover-subtitle" style="border:none; padding:0;">Gestión Ganadera, Censo Zootécnico, Permisos de Entrada y Control de Plazas<br>Marisma de Hinojos (Parque Nacional de Doñana)</h2>
+    <p style="text-align:center; color:#64748b; font-size:9pt; margin:0;">Plataforma Web Fullstack · Node.js 24 · Express / Serverless Vercel · React 19 · TypeScript · Supabase PostgreSQL & Storage · Nodemailer AES-256</p>
   </div>
 
   <div class="cover-meta">
     <table>
       <tr>
         <td class="label">Sistema:</td>
-        <td class="val"><strong>Gestión Marisma 2 (Versión 2.5 Enterprise)</strong></td>
+        <td class="val"><strong>Gestión Marisma 2 (Versión 2.8 Enterprise)</strong></td>
         <td class="label">Fecha de Edición:</td>
         <td class="val">Noviembre 2026</td>
       </tr>
@@ -372,13 +358,13 @@
         <td class="label">Destinatarios:</td>
         <td class="val">Técnicos de Programación, DevOps y Administradores de Sistemas</td>
         <td class="label">Ambiente DB:</td>
-        <td class="val">Supabase Cloud (PostgreSQL 15+) / SQLite WAL Legacy</td>
+        <td class="val">Supabase Cloud (PostgreSQL 15+) / Bucket <code>marisma-documents</code></td>
       </tr>
       <tr>
         <td class="label">Arquitectura:</td>
-        <td class="val">SPA React + REST API Express + Serverless Engine</td>
-        <td class="label">Nivel de Seguridad:</td>
-        <td class="val">JWT HS256 / Scrypt / RBAC Municipal / Rate Limiter</td>
+        <td class="val">SPA React + REST API Express / Serverless Functions</td>
+        <td class="label">Seguridad / Crypto:</td>
+        <td class="val">JWT HS256 / Scrypt / Cifrado AES-256-GCM / Rate Limiter</td>
       </tr>
     </table>
   </div>
@@ -390,29 +376,30 @@
 <h1>Índice de Contenidos Técnicos</h1>
 <ol style="font-size:10pt; line-height:1.7;">
   <li><strong>Objetivos del Proyecto y Reglas Municipales de Hinojos</strong></li>
-  <li><strong>Pila Tecnológica Exhaustiva (Stack Frontend, Backend y Datos)</strong></li>
+  <li><strong>Pila Tecnológica Exhaustiva (Stack Frontend, Backend, Storage y Envío Cifrado)</strong></li>
   <li><strong>Estructura del Repositorio y Arquitectura de Archivos</strong></li>
-  <li><strong>Modelo de Datos Relacional y Esquema en Supabase (PostgreSQL)</strong></li>
+  <li><strong>Modelo de Datos Relacional en Supabase (PostgreSQL) y Storage</strong></li>
   <li><strong>Lógica de Negocio y Algoritmos Específicos del Dominio Ganadero</strong></li>
-  <li><strong>Guía Procedimental: Cómo Realizar Cambios Futuros en el Proyecto</strong>
+  <li><strong>Arquitectura del Módulo Oficial «Permisos de Entrada a la Marisma»</strong>
     <ul>
-      <li>Procedimiento 6.1: Añadir nuevos campos zootécnicos o documentales (End-to-End).</li>
-      <li>Procedimiento 6.2: Implementar nuevas restricciones zootécnicas o cálculo de cupos.</li>
-      <li>Procedimiento 6.3: Incorporar un nuevo Rol o Permiso en el Sistema (RBAC).</li>
-      <li>Procedimiento 6.4: Crear una nueva Vista o Módulo Operativo en el Frontend.</li>
-      <li>Procedimiento 6.5: Modificar o generar nuevos Libros Oficiales en formato ODS / Excel.</li>
-      <li>Procedimiento 6.6: Ejecución de Migraciones de Base de Datos y Mantenimiento.</li>
+      <li>6.1. Gestión de remesas semanales y agrupaciones oficiales (Mié/Jue y Sáb/Dom).</li>
+      <li>6.2. Autocompletado reactivo desde censo y deduplicación por persona y animal.</li>
+      <li>6.3. Almacenamiento y vinculación de Guías Sanitarias con limpieza automática de storage.</li>
+      <li>6.4. Generación oficial .ODS a partir de plantilla de Doñana (formato visual y wrap).</li>
+      <li>6.5. Módulo de auditoría y consulta de accesos por persona para mandos e informes.</li>
+      <li>6.6. Estados de remesa y marcado formal (<code>ENVIADO [DÍA] DD/MM/AA</code>).</li>
     </ul>
   </li>
+  <li><strong>Arquitectura del Módulo «Configuración SMTP» con Cifrado AES-256-GCM</strong></li>
+  <li><strong>Guía Procedimental: Cómo Realizar Cambios Futuros en el Proyecto</strong></li>
   <li><strong>Seguridad, Autenticación y Hardening del Sistema</strong></li>
-  <li><strong>Configuración del Entorno (.env) y Despliegue en Producción (Vercel & On-Premise)</strong></li>
-  <li><strong>Subsistema de Auditoría Municipal Inmutable (audit_logs)</strong></li>
+  <li><strong>Configuración del Entorno (.env) y Guía de Comandos Oficiales</strong></li>
   <li><strong>Subsistema de Copias de Seguridad (.ZIP Atómico) y Recuperación ante Desastres</strong></li>
 </ol>
 
 <div class="callout callout-info">
-  <div class="callout-title">ℹ️ Finalidad de este Manual</div>
-  Este manual ha sido redactado con máxima rigurosidad para garantizar que cualquier técnico o equipo de programación pueda mantener, evolucionar, auditar y desplegar la plataforma a lo largo del tiempo, sin perder de vista los requisitos zootécnicos ni las ordenanzas del Ayuntamiento de Hinojos.
+  <div class="callout-title">ℹ️ Actualización de Noviembre de 2026</div>
+  Esta edición técnica incorpora la integración completa del <strong>Módulo Oficial de Permisos de Entrada a la Marisma</strong>, el sistema de almacenamiento en <strong>Supabase Storage</strong> (bucket <code>marisma-documents</code>), el envío protocolario de informes a la guardería de Doñana mediante <strong>Nodemailer con credenciales cifradas AES-256-GCM</strong> y la auditoría de accesos para superiores.
 </div>
 
 <!-- ========================================== -->
@@ -426,7 +413,7 @@
   La <strong>Marisma de Hinojos</strong> constituye una de las zonas comunales de pastoreo más relevantes del Espacio Natural de Doñana (Huelva, España). La ordenación de este espacio comunal está regida por ordenanza municipal del <strong>Excmo. Ayuntamiento de Hinojos</strong>, cuyo propósito es garantizar una carga ganadera equilibrada y sostenible para proteger el ecosistema de la marisma.
 </p>
 <p>
-  La aplicación <strong>Gestión Marisma 2</strong> surge como la evolución integral digital del censo ganadero, sustituyendo libros físicos y hojas de cálculo dispersas por una base de datos zootécnica estructurada, transaccional, con estricto control de accesos, auditoría forense y capacidad de interoperabilidad mediante la exportación de plantillas oficiales en formato OpenDocument (.ods).
+  La aplicación <strong>Gestión Marisma 2</strong> centraliza de manera digital no solo el censo zootécnico y control de plazas, sino también la <strong>tramitación oficial de autorizaciones y permisos de entrada</strong> de vehículos, personas y ganado para faenas ganaderas (soltar, recoger o repasar), coordinándose periódicamente con los servicios de guardería del Parque Nacional de Doñana.
 </p>
 
 <h2>1.2. Principios y Reglas de Negocio Incorporadas en Código</h2>
@@ -451,6 +438,9 @@
   </li>
   <li>
     <strong>Gestión Estricta por Campañas Anuales:</strong> El sistema organiza la información en ejercicios ganaderos (ej. <code>2024-2025</code>, <code>2025-2026</code>, <code>2026-2027</code>). La creación de una nueva campaña dispone de un asistente inteligente de traspaso que clona los socios y el censo seleccionado, manteniendo los históricos intactos.
+  </li>
+  <li>
+    <strong>Control de Días Oficiales de Acceso:</strong> Las autorizaciones de entrada a la marisma se organizan en los turnos habituales (Miércoles/Jueves o Sábado/Domingo) o extraordinarios, limitando a un máximo estricto de 7 personas por remesa para preservar el espacio protegido.
   </li>
 </ul>
 
@@ -509,16 +499,16 @@
       <td>Base de datos relacional Cloud con escalabilidad automática, backups continuos y RLS.</td>
     </tr>
     <tr>
-      <td><strong>Base de Datos Local</strong></td>
-      <td>SQLite (WAL Mode)</td>
-      <td>3.x nativo</td>
-      <td>Base de datos de almacenamiento local y motor de copias de seguridad de alta velocidad.</td>
+      <td><strong>Almacenamiento</strong></td>
+      <td>Supabase Storage</td>
+      <td>Bucket <code>marisma-documents</code></td>
+      <td>Almacenamiento de guías de traslado, certificados sanitarios, pasaportes y fotos de marcas.</td>
     </tr>
     <tr>
-      <td><strong>Almacenamiento</strong></td>
-      <td>Supabase Storage + FS</td>
-      <td>Buckets / FS</td>
-      <td>Bucket <code>documents</code> para pasaportes DIE, certificados sanitarios y fotos de marcas.</td>
+      <td><strong>Salida de Correo</strong></td>
+      <td>Nodemailer + Crypto</td>
+      <td>AES-256-GCM</td>
+      <td>Envío oficial por SMTP de remesas .ODS a Doñana con contraseñas cifradas en base de datos.</td>
     </tr>
     <tr>
       <td><strong>Seguridad / Auth</strong></td>
@@ -530,7 +520,7 @@
       <td><strong>Libros Oficiales</strong></td>
       <td>JSZip + XML Templates</td>
       <td>3.10+</td>
-      <td>Generador nativo de libros de cálculo OpenDocument (.ods) multipestaña sin dependencias pesadas.</td>
+      <td>Generador nativo de libros de cálculo OpenDocument (.ods) multipestaña y remesas semanales.</td>
     </tr>
     <tr>
       <td><strong>Despliegue Serverless</strong></td>
@@ -542,8 +532,8 @@
 </table>
 
 <div class="screenshot-card">
-  <img src="screenshots/02_censo_equino.png" alt="Vista General Censo Equino" />
-  <div class="screenshot-caption"><strong>Figura 2.1:</strong> Interfaz React de alto rendimiento mostrando el censo equino con filtros en tiempo real, estados de presencia y selector de campaña.</div>
+  <img src="screenshots/02_censo_equino.png" alt="Vista General Censo Equino con Navegación Completa" />
+  <div class="screenshot-caption"><strong>Figura 2.1:</strong> Barra de navegación institucional oficial del Ayuntamiento de Hinojos mostrando las 6 pestañas principales (Equino, Bovino, Propietarios, Histórico, Entradas y Ajustes) con sincronización en tiempo real.</div>
 </div>
 
 <!-- ========================================== -->
@@ -552,7 +542,7 @@
 <div class="page-break"></div>
 <h1>3. Estructura del Repositorio y Arquitectura de Archivos</h1>
 
-<p>El código fuente se organiza siguiendo el principio de separación de responsabilidades, dividiendo de forma inequívoca el cliente web, la API servidora, los adaptadores de base de datos y los scripts de soporte operacional:</p>
+<p>El código fuente se organiza siguiendo el principio de separación de responsabilidades:</p>
 
 <pre>
 GESTION MARISMA 2/
@@ -564,98 +554,92 @@ GESTION MARISMA 2/
 │   ├── screenshots/               # Capturas reales en alta resolución del sistema
 │   ├── MANUAL_TECNICO_GESTION_MARISMA.pdf
 │   └── MANUAL_USUARIO_GESTION_MARISMA.pdf
-├── public/                        # Recursos estáticos servidos directamente
-│   └── escudo-hinojos.svg         # Escudo heráldico oficial del Ayuntamiento de Hinojos
-├── scripts/                       # Scripts auxiliares de automatización y mantenimiento
-│   ├── buildServerless.js         # Bundler esbuild para empaquetar API en Vercel
-│   ├── captureScreenshots.ts      # Motor automatizado CDP para capturas de pantalla de la app
-│   └── migrateToSupabase.ts       # Script de migración y sincronización SQLite -> Supabase
 ├── server/                        # Backend RESTful en Node.js y TypeScript
 │   ├── services/
-│   │   └── odsExportService.ts    # Motor de generación nativa de hojas de cálculo .ODS
+│   │   ├── odsExportService.ts    # Motor de exportación de libros zootécnicos ODS
+│   │   ├── entradasOdsService.ts  # Generador de plantilla ODS oficial de Doñana con wrap
+│   │   └── mailService.ts         # Servicio Nodemailer con descifrado AES-256-GCM
+│   ├── templates/
+│   │   └── plantilla_entradas_donana.ods # Plantilla ODS oficial del Espacio Natural
 │   ├── auth.ts                    # Criptografía scrypt, generación/validación JWT y rate limiter
-│   ├── dataAdapter.ts             # Capa DAO / Repositorio con todas las queries a Supabase
-│   ├── db.ts                      # Adaptador stub / fallback de compatibilidad SQLite
-│   ├── dev.ts                     # Entrypoint de desarrollo local para Node.js (puerto 3001)
+│   ├── crypto.ts                  # Algoritmo de cifrado y descifrado AES-256-GCM para SMTP
+│   ├── dataAdapter.ts             # Capa DAO con queries a Supabase (animales, remesas, smtp)
 │   ├── index.ts                   # Servidor Express, enrutador REST, validación y CORS
-│   ├── mappers.ts                 # Mapeadores bidireccionales snake_case (DB) &lt;-&gt; camelCase (TS)
-│   └── supabaseClient.ts          # Instancia del cliente SDK de Supabase con Service Role Key
+│   ├── mappers.ts                 # Mapeadores bidireccionales snake_case &lt;-&gt; camelCase
+│   └── supabaseClient.ts          # Instancia del cliente SDK Supabase con Service Role
 ├── src/                           # Frontend React 19 + TypeScript
 │   ├── components/                # Componentes y vistas de la aplicación
-│   │   ├── AnimalDetailModal.tsx  # Ficha técnica oficial del animal para imprimir en papel
+│   │   ├── AnimalDetailModal.tsx  # Ficha oficial del animal con fechas de subida de guías
 │   │   ├── AnimalModal.tsx        # Formulario de alta/edición (Paso 1 identificador obligatorio)
 │   │   ├── AnimalTable.tsx        # Tabla de censo con buscador, ordenación y acciones
-│   │   ├── AssignPlazaModal.tsx   # Modal de asignación de plazas vacantes disponibles
-│   │   ├── AuditView.tsx          # Panel de auditoría municipal inmutable con visor JSON y CSV
-│   │   ├── BackupView.tsx         # Panel de descarga y restauración de archivos .ZIP
-│   │   ├── CampaignMigrationWizard.tsx # Asistente de clonación de censo para nueva campaña
-│   │   ├── Header.tsx             # Cabecera institucional con navegación y perfil activo
+│   │   ├── EntradaConsultaPersonaModal.tsx # Consulta histórica de accesos por persona
+│   │   ├── EntradaEditorModal.tsx # Formulario completo de tramitación de permisos de entrada
+│   │   ├── EntradasView.tsx       # Listado oficial de remesas de acceso a la marisma
+│   │   ├── Header.tsx             # Cabecera institucional con las 6 pestañas oficiales
 │   │   ├── HistoryMovementsView.tsx # Trazabilidad cronológica de movimientos de animales
-│   │   ├── LoginModal.tsx         # Modal de autenticación oficial del Ayuntamiento
-│   │   ├── MovementModal.tsx      # Modal de registro de entradas, salidas y bajas
 │   │   ├── OwnersView.tsx         # Directorio de ganaderos con validador DNI Módulo 23
-│   │   ├── SettingsView.tsx       # Panel de administración, estadísticas, campañas y usuarios
+│   │   ├── SettingsView.tsx       # Panel de administración, estadísticas, campañas y SMTP
+│   │   ├── SmtpConfigView.tsx     # Configuración de salida de correo y prueba de envío
 │   │   ├── StallionsView.tsx      # Registro municipal del libro de sementales reproductores
 │   │   ├── SwapPlazasModal.tsx    # Modal de permuta directa e intercambio de plazas
 │   │   └── UsersView.tsx          # Gestión de cuentas de usuario y asignación de roles
 │   ├── services/
 │   │   ├── apiClient.ts           # Cliente HTTP con resiliencia, reintentos y tokens
-│   │   ├── apiService.ts          # Fachada de métodos API consumidos por los componentes
-│   │   └── storageService.ts      # Manejo de almacenamiento local y fallback offline
+│   │   └── apiService.ts          # Fachada de métodos API consumidos por los componentes
 │   ├── types/
 │   │   └── marisma.ts             # Definición canónica de entidades e interfaces TypeScript
 │   ├── App.tsx                    # Componente raíz, orquestador de estado y router SPA
-│   ├── index.css                  # Directivas de Tailwind CSS v4 y estilos de impresión
-│   └── main.tsx                   # Punto de montaje del árbol React en el DOM
+│   └── index.css                  # Directivas de Tailwind CSS v4 y estilos de impresión
+├── scripts/
+│   ├── buildPdfs.ts               # Compilador de manuales HTML a PDF mediante Chromium
+│   ├── buildServerless.js         # Bundler esbuild para empaquetar API en Vercel
+│   └── captureScreenshots.ts      # Motor automatizado CDP para capturas en vivo de la app
 ├── .env                           # Variables de entorno y secretos criptográficos
 ├── package.json                   # Dependencias, scripts de arranque y configuración
-├── vercel.json                    # Reglas de enrutamiento y proxy serverless para Vercel
-└── vite.config.ts                 # Configuración de compilación de Vite
+└── vercel.json                    # Reglas de enrutamiento y proxy serverless para Vercel
 </pre>
 
 <!-- ========================================== -->
 <!-- CAPÍTULO 4 -->
 <!-- ========================================== -->
 <div class="page-break"></div>
-<h1>4. Modelo de Datos Relacional y Esquema en Supabase (PostgreSQL)</h1>
+<h1>4. Modelo de Datos Relacional en Supabase (PostgreSQL)</h1>
 
-<p>La base de datos reside en <strong>Supabase Cloud (PostgreSQL 15+)</strong>. La integridad referencial y las restricciones de unicidad aseguran que los censos no colisionen entre campañas ni admitan duplicados zootécnicos.</p>
-
-<h2>4.1. Esquema de Tablas en Supabase</h2>
+<p>La base de datos reside en <strong>Supabase Cloud (PostgreSQL 15+)</strong>. Las tablas principales del sistema zootécnico y del módulo de permisos de entrada son:</p>
 
 <table class="data-table">
   <thead>
     <tr>
-      <th style="width:20%;">Tabla</th>
-      <th style="width:25%;">Clave Primaria (PK)</th>
-      <th style="width:25%;">Claves Foráneas (FK)</th>
+      <th style="width:22%;">Tabla</th>
+      <th style="width:24%;">Clave Primaria (PK)</th>
+      <th style="width:24%;">Claves Foráneas (FK)</th>
       <th style="width:30%;">Descripción del Registro</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><code>campaigns</code></td>
-      <td><code>name (VARCHAR)</code></td>
-      <td>-</td>
-      <td>Ejercicios ganaderos anuales (ej. '2025-2026', '2026-2027').</td>
-    </tr>
-    <tr>
-      <td><code>associations</code></td>
+      <td><code>animals</code></td>
       <td><code>id (VARCHAR)</code></td>
-      <td>-</td>
-      <td>Asociaciones ganaderas municipales con REGA y datos de contacto.</td>
+      <td><code>campana -&gt; campaigns</code></td>
+      <td>Plazas censadas. Contiene microchip/crotal, plaza, estado y titular.</td>
     </tr>
     <tr>
       <td><code>owners</code></td>
       <td><code>id (VARCHAR)</code></td>
       <td><code>campana -&gt; campaigns</code></td>
-      <td>Ganaderos censados en cada campaña, validados con DNI/CIF y REGA.</td>
+      <td>Ganaderos censados en cada campaña con DNI/CIF y código REGA.</td>
     </tr>
     <tr>
-      <td><code>animals</code></td>
+      <td><code>entradas_remesas</code></td>
       <td><code>id (VARCHAR)</code></td>
       <td><code>campana -&gt; campaigns</code></td>
-      <td>Plazas censadas. Contiene microchip/crotal, plaza, estado y titular.</td>
+      <td>Remesas semanales de permisos de acceso con estado, fechas y título ODS.</td>
+    </tr>
+    <tr>
+      <td><code>entradas_documentos</code></td>
+      <td><code>id (VARCHAR)</code></td>
+      <td><code>animal_id -&gt; animals</code></td>
+      <td>Guías de traslado sanitario vinculadas a una entrada y a la ficha del animal.</td>
     </tr>
     <tr>
       <td><code>stallions</code></td>
@@ -670,62 +654,19 @@ GESTION MARISMA 2/
       <td>Trazabilidad de entradas, salidas temporales, reingresos y bajas.</td>
     </tr>
     <tr>
-      <td><code>users</code></td>
-      <td><code>id (VARCHAR)</code></td>
-      <td>-</td>
-      <td>Usuarios del sistema con contraseñas cifradas scrypt y roles RBAC.</td>
-    </tr>
-    <tr>
       <td><code>settings</code></td>
       <td><code>key (VARCHAR)</code></td>
       <td>-</td>
-      <td>Configuraciones del sistema en formato Clave-Valor (campaña activa, etc.).</td>
+      <td>Configuración del sistema: campaña activa y parámetros SMTP cifrados.</td>
     </tr>
     <tr>
-      <td><code>audit_logs</code></td>
+      <td><code>users</code></td>
       <td><code>id (VARCHAR)</code></td>
       <td>-</td>
-      <td>Log inmutable de auditoría con actor, acción, IP y diff JSON.</td>
+      <td>Usuarios del sistema con contraseñas scrypt y roles RBAC.</td>
     </tr>
   </tbody>
 </table>
-
-<h2>4.2. Definición Canónica de TypeScript (<code>src/types/marisma.ts</code>)</h2>
-<p>Cada fila de la base de datos se corresponde de forma unívoca con una interfaz TypeScript mediante los mappers bidireccionales en <code>server/mappers.ts</code>:</p>
-
-<pre><code>// Tipos nucleares del sistema zootécnico de Hinojos
-export type AnimalType = 'EQUINO' | 'BOVINO';
-export type PresenceStatus = 'DENTRO' | 'FUERA' | 'BAJA' | 'PLAZA_VACANTE';
-export type UserRole = 'ADMINISTRADOR' | 'CONSULTA';
-
-export interface Animal {
-  id: string;
-  tipo: AnimalType;
-  campana: string;
-  plazaNumero: string;             // ej. 'HI001' (Equino) o 'HIN001' (Bovino)
-  propietario: string;              // Nombre del ganadero titular
-  propietarioDni?: string;          // DNI oficial del ganadero
-  finca: string;
-  identificacion1: string;          // Microchip 15 dígitos (Equino) o Crotal (Bovino)
-  identificacion2?: string;         // UELN / Pasaporte (Equino)
-  nombreAnimal?: string;            // Exclusivo Equinos (Bovinos siempre vacío)
-  sexo: 'Macho (M)' | 'Hembra (H)';
-  fechaNacimiento?: string;
-  capa: string;
-  fechaUltimaRevision?: string;
-  estadoPresencia: PresenceStatus;
-  esPlazaVacante?: boolean;
-  rastra?: {
-    tieneRastra: boolean;
-    crotal?: string;
-    sexo?: 'Macho (M)' | 'Hembra (H)';
-    capa?: string;
-    nombre?: string;
-  };
-  documentos?: AnimalDocument[];
-  anotaciones?: Annotation[];
-}
-</code></pre>
 
 <!-- ========================================== -->
 <!-- CAPÍTULO 5 -->
@@ -748,12 +689,6 @@ export interface Animal {
 <p>
   Tanto en el alta de animales (<code>AnimalModal.tsx</code>) como de sementales (<code>StallionsView.tsx</code>) y ganaderos (<code>OwnersView.tsx</code>), se implementa un <strong>primer paso obligatorio e interactivo</strong>:
 </p>
-
-<div class="screenshot-card">
-  <img src="screenshots/11_modal_alta_animal.png" alt="Formulario de Alta con Paso 1 Bloqueante" />
-  <div class="screenshot-caption"><strong>Figura 5.1:</strong> Formulario de alta con bloqueo reactivo. El Paso 1 valida la existencia del identificador en la campaña actual (aviso bloqueante si ya existe) y busca automáticamente en campañas anteriores para rellenar los datos zootécnicos del animal.</div>
-</div>
-
 <ol>
   <li>El campo <code>Identificación 1</code> (Microchip o Crotal) es el único campo activo inicialmente.</li>
   <li>El usuario debe escribir un mínimo de 4 caracteres para que se ejecute la verificación asíncrona.</li>
@@ -761,287 +696,161 @@ export interface Animal {
   <li>Si el microchip existe en <strong>campañas anteriores</strong>, el sistema emite una notificación en verde y <strong>autorrellena automáticamente</strong> todos los campos conocidos (nombre, sexo, capa, fecha de nacimiento, ganadero habitual y UELN).</li>
 </ol>
 
-<h2>5.3. Permutas e Intercambio Atómico de Plazas</h2>
+<h2>5.3. Repositorio Documental con Fechas de Subida</h2>
 <p>
-  El modal <code>SwapPlazasModal.tsx</code> y el endpoint <code>POST /api/animals/swap</code> implementan la permuta regulada por la ordenanza municipal:
+  En cumplimiento de los requerimientos de trazabilidad documental, todos los archivos adjuntos (Pasaportes DIE, Guías Sanitarias y Certificados) se muestran en la ficha técnica (<code>AnimalDetailModal.tsx</code>) indicando de forma explícita su fecha de registro en el sistema con el formato visual <code>📅 DD/MM/AAAA</code>:
 </p>
-<ul>
-  <li>Dos ganaderos acuerdan intercambiar los animales que ocupan sus respectivas plazas.</li>
-  <li><strong>Principio de titularidad:</strong> Cada ganadero conserva la titularidad de su plaza adjudicada. Los animales intercambian sus atributos de plaza (<code>plazaNumero</code>), manteniendo cada titular su cupo asignado.</li>
-  <li>El backend ejecuta la operación de forma transaccional, actualiza ambos animales en Supabase y genera de manera automática dos anotaciones en el cuaderno de campo y un registro en <code>audit_logs</code>.</li>
-</ul>
 
 <div class="screenshot-card">
-  <img src="screenshots/14_permutas_plazas.png" alt="Modal de Permutas de Plazas" />
-  <div class="screenshot-caption"><strong>Figura 5.2:</strong> Modal de intercambio y permuta directa entre plazas con vista previa del resultado antes de confirmar la transacción.</div>
+  <img src="screenshots/12_ficha_detalle_animal.png" alt="Ficha del Animal con Fechas Documentales" />
+  <div class="screenshot-caption"><strong>Figura 5.1:</strong> Ficha técnica oficial mostrando las guías sanitarias y pasaportes con su correspondiente fecha de subida (📅 DD/MM/AAAA) y la sección de permisos de Doñana vinculados.</div>
 </div>
 
 <!-- ========================================== -->
 <!-- CAPÍTULO 6 -->
 <!-- ========================================== -->
 <div class="page-break"></div>
-<h1>6. Guía Procedimental: Cómo Realizar Cambios Futuros en el Proyecto</h1>
+<h1>6. Arquitectura del Módulo Oficial «Permisos de Entrada a la Marisma»</h1>
 
-<p>Esta sección proporciona instrucciones exactas y exhaustivas para los programadores que deban evolucionar la aplicación a lo largo del tiempo.</p>
-
-<h2>Procedimiento 6.1: Añadir un Nuevo Campo Zootécnico o Administrativo</h2>
-<p>Supongamos que el Ayuntamiento solicita añadir el campo <strong>"Número de Póliza de Seguro"</strong> (<code>polizaSeguro</code>) a la ficha del animal.</p>
-
-<ol>
-  <li>
-    <strong>Paso 1: Modificar el esquema en Supabase (PostgreSQL)</strong><br>
-    Ejecutar en la consola SQL de Supabase:
-    <pre><code>ALTER TABLE animals ADD COLUMN poliza_seguro VARCHAR(100) DEFAULT '';</code></pre>
-  </li>
-  <li>
-    <strong>Paso 2: Actualizar la interfaz TypeScript (<code>src/types/marisma.ts</code>)</strong><br>
-    Localizar la interfaz <code>Animal</code> y agregar la propiedad:
-    <pre><code>export interface Animal {
-  // ... campos existentes
-  polizaSeguro?: string;
-}</code></pre>
-  </li>
-  <li>
-    <strong>Paso 3: Actualizar los Mappers (<code>server/mappers.ts</code>)</strong><br>
-    Modificar la función <code>mapAnimalRow</code> (de DB a TS) y el insert/update de <code>saveAnimal</code> en <code>server/dataAdapter.ts</code> (de TS a DB):
-    <pre><code>// En server/mappers.ts:
-export function mapAnimalRow(row: any): Animal {
-  return {
-    // ...
-    polizaSeguro: row.poliza_seguro || '',
-  };
-}
-
-// En server/dataAdapter.ts (dentro de saveAnimal):
-const row: any = {
-  // ...
-  poliza_seguro: animal.polizaSeguro || '',
-};</code></pre>
-  </li>
-  <li>
-    <strong>Paso 4: Añadir el campo en el Formulario (<code>src/components/AnimalModal.tsx</code>)</strong><br>
-    Agregar el estado y el input HTML correspondiente con clases Tailwind:
-    <pre><code>&lt;div&gt;
-  &lt;label className="block text-xs font-bold text-gray-700 uppercase mb-1"&gt;
-    Póliza de Seguro
-  &lt;/label&gt;
-  &lt;input
-    type="text"
-    value={polizaSeguro}
-    onChange={(e) =&gt; setPolizaSeguro(e.target.value)}
-    placeholder="ej. SEG-2026-99482"
-    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-  /&gt;
-&lt;/div&gt;</code></pre>
-  </li>
-  <li>
-    <strong>Paso 5: Mostrar el campo en la Ficha Oficial (<code>src/components/AnimalDetailModal.tsx</code>)</strong><br>
-    Incluir el dato dentro de la sección <em>Datos del Animal</em> para que se imprima automáticamente en papel con el escudo municipal.
-  </li>
-</ol>
-
-<h2>Procedimiento 6.2: Implementar Nuevas Restricciones de Carga o Cupos</h2>
 <p>
-  Toda la lógica de conteo y balance de cupos reside en dos puntos clave:
+  El módulo de permisos de entrada (accesible desde la pestaña <strong>📄 Entradas</strong> del menú superior) digitaliza y agiliza la comunicación semanal entre el Ayuntamiento de Hinojos y la Guardería del Espacio Natural de Doñana.
 </p>
-<ul>
-  <li>
-    <strong>Cálculo en Frontend:</strong> En <code>src/components/SettingsView.tsx</code> (bloque <code>useMemo</code> de <code>stats</code>).
-  </li>
-  <li>
-    <strong>Validación en Backend:</strong> En <code>server/index.ts</code> dentro del endpoint <code>POST /api/animals</code>.
-  </li>
-</ul>
-<div class="callout callout-warn">
-  <div class="callout-title">⚠️ Regla de Oro Zootécnica</div>
-  Cualquier cálculo de cupo debe respetar rigurosamente que los animales con <code>tipo === 'EQUINO'</code> o <code>'BOVINO'</code> en el libro de sementales (<code>stallions</code>) y las rastras lactantes (<code>rastra.tieneRastra === true</code>) <strong>NUNCA deben restar plazas ordinarias</strong>.
+
+<div class="screenshot-card">
+  <img src="screenshots/17_entradas_view.png" alt="Listado de Remesas de Entrada a la Marisma" />
+  <div class="screenshot-caption"><strong>Figura 6.1:</strong> Panel principal de Entradas a la Marisma con filtros de estado (Borradores / Enviados), buscador por titular o matrícula, botón de consulta por ganadero y creación de nuevas solicitudes.</div>
 </div>
 
-<h2>Procedimiento 6.3: Agregar un Nuevo Rol de Usuario (RBAC)</h2>
+<h2>6.1. Flujo de Trabajo y Tramitación de Remesas</h2>
 <p>
-  Actualmente existen los roles <code>ADMINISTRADOR</code> y <code>CONSULTA</code>. Para añadir un nuevo rol, por ejemplo <code>GUARDERIA</code> (con permisos para registrar movimientos y notas, pero sin acceso a Ajustes ni borrado de campañas):
-</p>
-<ol>
-  <li>En <code>src/types/marisma.ts</code>, modificar: <code>export type UserRole = 'ADMINISTRADOR' | 'CONSULTA' | 'GUARDERIA';</code></li>
-  <li>En <code>server/auth.ts</code>, crear el middleware específico de autorización:
-    <pre><code>export function requireGuarderiaOrAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  if (!req.user || (req.user.rol !== 'ADMINISTRADOR' && req.user.rol !== 'GUARDERIA')) {
-    return res.status(403).json({ error: 'Permisos insuficientes para esta operación.' });
-  }
-  next();
-}</code></pre>
-  </li>
-  <li>Proteger las rutas deseadas en <code>server/index.ts</code> aplicando el middleware.</li>
-  <li>En el componente <code>src/components/Header.tsx</code> y <code>src/components/SettingsView.tsx</code>, condicionar la visibilidad de las pestañas administrativas a <code>currentUser.rol === 'ADMINISTRADOR'</code>.</li>
-</ol>
-
-<h2>Procedimiento 6.4: Crear una Nueva Pantalla o Módulo</h2>
-<ol>
-  <li>Crear el nuevo componente en <code>src/components/NuevoModuloView.tsx</code>.</li>
-  <li>En <code>src/types/marisma.ts</code>, extender el tipo de navegación: <code>export type NavTab = 'EQUINO' | 'BOVINO' | 'PROPIETARIOS' | 'HISTORICO' | 'AJUSTES' | 'NUEVO_MODULO';</code></li>
-  <li>En <code>src/components/Header.tsx</code>, añadir el botón correspondiente con su icono Lucide.</li>
-  <li>En <code>src/App.tsx</code>, renderizar condicionalmente el nuevo componente cuando <code>currentTab === 'NUEVO_MODULO'</code>.</li>
-</ol>
-
-<h2>Procedimiento 6.5: Modificar o Generar Nuevos Libros Oficiales (.ODS)</h2>
-<p>
-  El servicio <code>server/services/odsExportService.ts</code> genera documentos OpenDocument conformes con el estándar ISO/IEC 26300 mediante plantillas XML empaquetadas en memoria con <code>jszip</code>:
+  A través de <code>EntradaEditorModal.tsx</code>, los técnicos municipales registran las solicitudes de acceso agrupándolas por los turnos autorizados:
 </p>
 <ul>
-  <li>Para modificar las columnas o estilos del libro de equinos, editar la plantilla XML en <code>OdsExportService.generateEquinosWorkbook</code>.</li>
-  <li>Los caracteres especiales (&lt;, &gt;, &amp;, &quot;) deben ser escapados utilizando la función auxiliar <code>escapeXml(texto)</code> para evitar corrupciones en LibreOffice / Excel.</li>
+  <li><strong>Asistente Rápido de Días:</strong> Botones rápidos para calcular automáticamente las fechas del próximo turno ordinario (<em>Miércoles y Jueves</em> o <em>Sábado y Domingo</em>) o configurar días extraordinarios.</li>
+  <li><strong>Control de Cupo Máximo:</strong> Contador en vivo con límite estricto de <strong>7 personas</strong> por remesa.</li>
+  <li><strong>Autocompletado Asistido:</strong> Al comenzar a escribir el nombre del titular o de un equino, el sistema busca en el censo activo y autorrellena DNI, teléfono, nombre del animal, plaza y microchip.</li>
+  <li><strong>Deduplicación Estricta:</strong> El sistema impide que una misma persona o un mismo caballo figure más de una vez en la misma fecha de acceso.</li>
+</ul>
+
+<div class="screenshot-card">
+  <img src="screenshots/18_editor_entrada.png" alt="Formulario de Solicitud de Entrada" />
+  <div class="screenshot-caption"><strong>Figura 6.2:</strong> Formulario de tramitación de permisos con selector de fechas oficiales, contador de cupo, asignación de vehículos/acompañantes y opciones de descarga, guardado o envío directo por correo.</div>
+</div>
+
+<h2>6.2. Subida de Guías Sanitarias y Limpieza de Storage</h2>
+<p>
+  Desde el propio formulario de entrada, se permite subir el archivo PDF de la <strong>Guía de Traslado Sanitaria</strong> cuando la faena implica soltar o retirar animales. La guía se almacena en el bucket <code>marisma-documents</code> de Supabase Storage y se vincula automáticamente a la ficha del animal en la marisma. Si posteriormente se elimina una solicitud, el backend purga los documentos huérfanos de Storage para no agotar la cuota de alojamiento.
+</p>
+
+<h2>6.3. Generación Oficial .ODS (LibreOffice Calc) con Plantilla Doñana</h2>
+<p>
+  El servicio <code>server/services/entradasOdsService.ts</code> utiliza la plantilla oficial de la Junta de Andalucía (<code>server/templates/plantilla_entradas_donana.ods</code>). Mediante manipulación XML directa:
+</p>
+<ul>
+  <li>Se inyecta la cabecera verde institucional y bordes completos en todas las celdas.</li>
+  <li>Se aplica la directiva <code>fo:wrap-option="wrap"</code> en la columna de observaciones para que las explicaciones extensas no desborden la celda.</li>
+  <li>Se incluye una línea divisoria visual y elegante entre días consecutivos (ej. entre sábado y domingo).</li>
+</ul>
+
+<h2>6.4. Consulta de Accesos por Ganadero para Superiores Municipal</h2>
+<p>
+  El componente <code>EntradaConsultaPersonaModal.tsx</code> proporciona una herramienta de auditoría zootécnica para mandos del Ayuntamiento:
+</p>
+
+<div class="screenshot-card">
+  <img src="screenshots/19_consulta_persona_entradas.png" alt="Consulta de Accesos por Ganadero" />
+  <div class="screenshot-caption"><strong>Figura 6.3:</strong> Modal de consulta histórica de accesos por persona con filtros temporales, desglose por faena (soltar/recoger/repasar) y botón directo [Ver] en modo solo lectura.</div>
+</div>
+
+<h2>6.5. Ciclo de Vida y Estados de Remesa</h2>
+<ul>
+  <li><strong>BORRADOR (Ámbar):</strong> Solicitud abierta en preparación.</li>
+  <li><strong>ENVIADO (Verde):</strong> Solicitud formalizada remitida a Doñana. Puede enviarse directamente por correo o marcarse manualmente (para trámites telefónicos/presenciales). El título se actualiza al formato oficial: <code>ENVIADO [DÍA_SEMANA] DD/MM/AA</code> (ej. <code>ENVIADO MARTES 17/11/26</code>).</li>
 </ul>
 
 <!-- ========================================== -->
 <!-- CAPÍTULO 7 -->
 <!-- ========================================== -->
 <div class="page-break"></div>
-<h1>7. Seguridad, Autenticación y Hardening del Sistema</h1>
-
-<h2>7.1. Criptografía de Contraseñas y Generación de Tokens</h2>
-<p>
-  El sistema utiliza criptografía nativa de Node.js en <code>server/auth.ts</code>, eliminando dependencias binarias externas (como bcrypt nativo) para garantizar total portabilidad serverless en Vercel:
-</p>
-<ul>
-  <li><strong>Derivación de Claves:</strong> <code>crypto.scryptSync(password, salt, 64)</code> con salt criptográfico aleatorio de 16 bytes.</li>
-  <li><strong>Comparación en Tiempo Constante:</strong> <code>crypto.timingSafeEqual</code> para prevenir ataques de canal lateral (timing attacks).</li>
-  <li><strong>Tokens JWT:</strong> Firmados con algoritmo HMAC-SHA256 (HS256) con una validez estricta de 7 días.</li>
-</ul>
-
-<h2>7.2. Rate Limiting y Protección contra Ataques de Fuerza Bruta</h2>
-<p>
-  En <code>server/index.ts</code> se implementa un mecanismo de bucket de tasa de solicitudes por IP y usuario:
-</p>
-<ul>
-  <li>Tras <strong>5 intentos fallidos consecutivos</strong> de inicio de sesión, la IP de origen queda bloqueada temporalmente durante 15 minutos, devolviendo código HTTP <code>429 Too Many Requests</code>.</li>
-  <li>Al autenticarse con éxito, el contador de fallos se reinicia automáticamente a cero.</li>
-</ul>
-
-<h2>7.3. Cabeceras HTTP de Hardening Defensivo</h2>
-<p>
-  Toda respuesta del backend incluye cabeceras de seguridad reforzadas:
-</p>
-<pre><code>X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: camera=(), microphone=(), geolocation=()
-Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; ...</code></pre>
-
-<!-- ========================================== -->
-<!-- CAPÍTULO 8 -->
-<!-- ========================================== -->
-<div class="page-break"></div>
-<h1>8. Configuración del Entorno y Despliegue en Producción</h1>
-
-<h2>8.1. Variables de Entorno (Archivo <code>.env</code>)</h2>
-<p>Para el correcto funcionamiento del sistema deben configurarse las siguientes variables en el servidor o panel de Vercel:</p>
-
-<table class="data-table">
-  <thead>
-    <tr>
-      <th style="width:30%;">Variable de Entorno</th>
-      <th style="width:25%;">Ejemplo / Formato</th>
-      <th style="width:45%;">Propósito y Requisito</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>SUPABASE_URL</code></td>
-      <td><code>https://xyz.supabase.co</code></td>
-      <td>Punto de enlace REST/GraphQL de la instancia Supabase Cloud.</td>
-    </tr>
-    <tr>
-      <td><code>SUPABASE_SERVICE_ROLE_KEY</code></td>
-      <td><code>sb_secret_...</code></td>
-      <td>Clave secreta con permisos de servicio para el backend Express.</td>
-    </tr>
-    <tr>
-      <td><code>SUPABASE_ANON_KEY</code></td>
-      <td><code>eyJhbGciOi...</code></td>
-      <td>Clave pública para operaciones cliente delegadas.</td>
-    </tr>
-    <tr>
-      <td><code>JWT_SECRET</code></td>
-      <td>Cadena aleatoria &gt; 32 caracteres</td>
-      <td>Clave secreta para firmar y verificar tokens HMAC-SHA256.</td>
-    </tr>
-    <tr>
-      <td><code>PORT</code></td>
-      <td><code>3001</code></td>
-      <td>Puerto de escucha para ejecución local o en contenedor.</td>
-    </tr>
-    <tr>
-      <td><code>NODE_ENV</code></td>
-      <td><code>production</code> / <code>development</code></td>
-      <td>Define el modo de optimización y redirecciones HTTPS automáticas.</td>
-    </tr>
-  </tbody>
-</table>
-
-<h2>8.2. Proceso de Compilación y Despliegue Serverless en Vercel</h2>
-<ol>
-  <li>El frontend SPA se compila con Vite: <code>vite build</code> generando los activos en la carpeta <code>dist/</code>.</li>
-  <li>El script <code>scripts/buildServerless.js</code> compila <code>server/index.ts</code> mediante <code>esbuild</code> en un único fichero ejecutable en <code>api/index.js</code>.</li>
-  <li>El archivo <code>vercel.json</code> define los rewrites para que cualquier llamada a <code>/api/*</code> sea gestionada por la función serverless de Express, mientras que las demás rutas cargan <code>index.html</code>.</li>
-</ol>
-
-<h2>8.3. Despliegue Local u On-Premise (Servidor Municipal)</h2>
-<p>Para desplegar en un servidor local del Ayuntamiento con Node.js 24:</p>
-<pre><code># 1. Instalar dependencias
-npm install --production=false
-
-# 2. Compilar frontend y serverless
-npm run build
-
-# 3. Arrancar servidor API permanente (o mediante PM2 / Windows Service)
-node server/dev.js</code></pre>
-
-<!-- ========================================== -->
-<!-- CAPÍTULO 9 & 10 -->
-<!-- ========================================== -->
-<div class="page-break"></div>
-<h1>9. Subsistema de Auditoría Municipal Inmutable</h1>
+<h1>7. Arquitectura del Módulo «Configuración SMTP» con Cifrado AES-256-GCM</h1>
 
 <p>
-  Cada modificación zootécnica, administrativa o de usuarios queda registrada de forma permanente en la tabla <code>audit_logs</code>. Este mecanismo permite realizar análisis forenses ante cualquier discrepancia en el censo:
+  Ubicado en la pestaña <strong>Configuración SMTP</strong> dentro de Ajustes (<code>SmtpConfigView.tsx</code>), permite gestionar la salida oficial de correo para remitir los partes semanales a Doñana:
 </p>
 
 <div class="screenshot-card">
-  <img src="screenshots/09_ajustes_auditoria.png" alt="Panel de Auditoría Municipal" />
-  <div class="screenshot-caption"><strong>Figura 9.1:</strong> Panel oficial de Auditoría en Ajustes con buscador por término, filtros por acción, visor de JSON de cambios y exportación a informe CSV para Excel.</div>
+  <img src="screenshots/20_ajustes_smtp.png" alt="Configuración SMTP y Salida de Correo" />
+  <div class="screenshot-caption"><strong>Figura 7.1:</strong> Panel de administración SMTP con configuración de destinatarios oficiales, copias ocultas (BCC), servidor de salida y botón de comprobación en tiempo real.</div>
 </div>
 
+<h2>7.1. Criptografía Simétrica AES-256-GCM en Base de Datos</h2>
+<p>
+  Para proteger las credenciales municipales, la contraseña del servidor de correo <strong>nunca se almacena en texto plano</strong>. En <code>server/crypto.ts</code> se implementa:
+</p>
+<pre><code>// Algoritmo: AES-256-GCM con Vector de Inicialización (IV) de 16 bytes
+// y Authentication Tag de 16 bytes para verificar autenticidad y prevenir manipulaciones
+const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv);
+let encrypted = cipher.update(plainPassword, 'utf8', 'hex');
+encrypted += cipher.final('hex');
+const authTag = cipher.getAuthTag().toString('hex');
+const storedPayload = `${iv.toString('hex')}:${authTag}:${encrypted}`;</code></pre>
+
+<h2>7.2. Protocolo de Envío Institucional</h2>
 <ul>
-  <li><strong>Eventos Registrados:</strong> <code>ALTA</code>, <code>MODIFICACION</code>, <code>BAJA</code>, <code>PERMUTA</code>, <code>MOVIMIENTO</code>, <code>NUEVA_CAMPANA</code>, <code>CREAR_EDITAR_GANADERO</code>, <code>INICIO_SESION</code>, etc.</li>
-  <li><strong>Campos Almacenados:</strong> ID, timestamp ISO exacto, ID y nombre del usuario, rol municipal, dirección IP del cliente, entidad afectada y carga JSON detallada con los valores antes y después de la operación.</li>
-  <li><strong>Exportación Oficial:</strong> El botón <em>"Exportar Informe CSV"</em> genera un fichero plano codificado en <strong>UTF-8 con BOM</strong> para que Microsoft Excel en español reconozca tildes y caracteres especiales sin deformar los datos.</li>
+  <li><strong>Asunto Dinámico:</strong> <code>Entradas Marisma- [Días Autorizados] [Año]</code> (ej. <em>Entradas Marisma- Sábado 21 y Domingo 22 de Noviembre 2026</em>).</li>
+  <li><strong>Cuerpo Institucional:</strong> Saludo formal del Ayuntamiento de Hinojos indicando la remisión del parte semanal adjunto en formato <code>.ods</code> para la guardería.</li>
+  <li><strong>Destinatarios y BCC:</strong> Admite listas de correos separados por comas y copia oculta automática (BCC) para el archivo del departamento.</li>
 </ul>
 
+<!-- ========================================== -->
+<!-- CAPÍTULO 8, 9 & 10 -->
+<!-- ========================================== -->
 <div class="page-break"></div>
-<h1>10. Subsistema de Copias de Seguridad (.ZIP) y Disaster Recovery</h1>
+<h1>8. Guía Procedimental: Cómo Realizar Cambios Futuros</h1>
 
+<h2>Procedimiento 8.1: Modificar la Plantilla ODS de Doñana</h2>
 <p>
-  En cumplimiento de las directrices del Ayuntamiento de Hinojos, el sistema prescinde de copias automáticas silenciosas y proporciona un <strong>respaldo completo bajo demanda en un solo clic</strong>:
+  La plantilla base reside en <code>server/templates/plantilla_entradas_donana.ods</code>. Para modificar su estructura visual:
 </p>
-
-<div class="screenshot-card">
-  <img src="screenshots/10_ajustes_backup.png" alt="Panel de Copias de Seguridad" />
-  <div class="screenshot-caption"><strong>Figura 10.1:</strong> Módulo de respaldo y restauración en 1 clic de archivos .ZIP consolidando base de datos, metadatos oficiales y documentos adjuntos.</div>
-</div>
-
-<h2>10.1. Generación del Archivo de Respaldo (.ZIP)</h2>
 <ol>
-  <li>Se ejecuta la consolidación del journal de SQLite mediante <code>PRAGMA wal_checkpoint(TRUNCATE);</code> asegurando que toda transacción en memoria esté grabada en disco.</li>
-  <li>Se empaqueta la base de datos <code>marisma.db</code>.</li>
-  <li>Se empaqueta la carpeta completa <code>uploads/documents/</code> con todos los pasaportes DIE, certificados sanitarios y fotografías de marcas.</li>
-  <li>Se genera un archivo <code>manifest.json</code> con metadatos oficiales (fecha, autor, recuento exacto de animales, movimientos, usuarios y hash de integridad).</li>
-  <li>Se descarga en el navegador con el nombre normalizado <code>Copia_Seguridad_Marisma_Hinojos_YYYYMMDD_HHMMSS.zip</code> y se asienta el evento en la auditoría municipal.</li>
+  <li>Abrir el fichero con LibreOffice Calc, realizar las modificaciones deseadas en títulos, logos o estilos de celda y guardar en formato ODS.</li>
+  <li>El servicio <code>server/services/entradasOdsService.ts</code> descomprime este archivo en memoria con <code>jszip</code>, localiza el fichero <code>content.xml</code> e inyecta las filas dinámicas de personas, vehículos y faenas respetando los estilos de celda originales.</li>
 </ol>
 
-<h2>10.2. Protocolo de Restauración Segura</h2>
+<h2>Procedimiento 8.2: Añadir un Nuevo Tipo de Faena Ganadera</h2>
 <p>
-  La restauración de una copia de seguridad implementa una <strong>salvaguarda automática previa</strong>: antes de sobreescribir cualquier dato, el servidor crea una copia de emergencia en <code>data/marisma.db.bak-[timestamp]</code>. Si el fichero subido estuviera corrupto o incompleto, el sistema aborta la operación y mantiene intacta la base de datos existente.
+  Actualmente se contemplan <em>SOLTAR</em>, <em>RECOGER</em> y <em>REPASAR</em>. Para añadir una nueva faena (por ejemplo, <em>SANEO MUNICIPAL</em>):
+</p>
+<ol>
+  <li>En <code>src/types/marisma.ts</code>, modificar: <code>export type FaenaType = 'SOLTAR' | 'RECOGER' | 'REPASAR' | 'SANEO';</code></li>
+  <li>En <code>src/components/EntradaEditorModal.tsx</code>, añadir la opción en el desplegable de faenas con su color identificativo.</li>
+  <li>En <code>server/services/entradasOdsService.ts</code>, comprobar que el texto se mapee correctamente en la celda de faena de la hoja de cálculo.</li>
+</ol>
+
+<div class="page-break"></div>
+<h1>9. Seguridad, Hardening y Comandos de Ejecución</h1>
+
+<h2>9.1. Guía de Comandos Oficiales (Windows / PowerShell)</h2>
+<p>Para operar, compilar y verificar el sistema en la terminal:</p>
+
+<pre><code># 1. Arrancar el Servidor Backend (Express + Supabase en puerto 3001)
+cmd.exe /c "npm run server"
+
+# 2. Arrancar el Frontend de Desarrollo (Vite en puerto 3000)
+cmd.exe /c "npm run dev"
+
+# 3. Comprobación de Tipos e Integridad de TypeScript
+cmd.exe /c "npm run lint"
+
+# 4. Compilación Completa de Producción (Cliente + Servidor Serverless)
+cmd.exe /c "npm run build"
+
+# 5. Compilación de los Manuales Oficiales a PDF
+cmd.exe /c "npm run docs:pdf"</code></pre>
+
+<h1>10. Subsistema de Copias de Seguridad (.ZIP)</h1>
+<p>
+  En la pestaña <strong>Copia de Seguridad</strong> de Ajustes, el botón <em>"Descargar Copia de Seguridad Completa (.ZIP)"</em> genera en 1 clic un respaldo atómico de toda la base de datos, documentos adjuntos de Supabase Storage y manifiesto institucional con hash de integridad, permitiendo su restauración segura con copia de emergencia previa.
 </p>
 
 </body>

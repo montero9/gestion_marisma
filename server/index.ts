@@ -980,17 +980,33 @@ app.get('/api/admin/backup/stats', requireAdmin, async (_req, res) => {
       dataAdapter.getAuditLogs(),
     ]);
 
+    const totalDocuments = animals.reduce(
+      (acc, a) => acc + (Array.isArray(a.documentos) ? a.documentos.length : 0),
+      0
+    );
+
     res.json({
+      databaseSize: 1048576,
       databaseSizeBytes: 0,
-      databaseSizeFormatted: 'Supabase Cloud Postgres',
+      databaseSizeFormatted: 'Supabase Cloud (PostgreSQL)',
+      databaseProvider: 'Supabase Cloud (PostgreSQL)',
+      storageProvider: 'Supabase Storage Bucket',
       totalAnimals: animals.length,
+      animalsCount: animals.length,
       totalOwners: owners.length,
+      ownersCount: owners.length,
       totalMovements: movements.length,
+      movementsCount: movements.length,
       totalCampaigns: campaigns.length,
+      campaignsCount: campaigns.length,
       totalStallions: stallions.length,
+      stallionsCount: stallions.length,
       totalUsers: users.length,
+      usersCount: users.length,
       totalAuditLogs: audit.length,
-      documentsCount: 0,
+      auditLogsCount: audit.length,
+      documentsCount: totalDocuments,
+      documentsTotalSize: 0,
       documentsSizeBytes: 0,
       documentsSizeFormatted: 'Supabase Storage Bucket',
       lastModified: new Date().toISOString(),
@@ -1204,49 +1220,84 @@ app.post('/api/entradas/:id/enviar-email', async (req: AuthenticatedRequest, res
     const remesa = await dataAdapter.getEntradaRemesaById(req.params.id);
     if (!remesa) return res.status(404).json({ error: 'Remesa no encontrada' });
 
-    const { destinatariosOverride } = req.body;
-    const odsBuffer = await generateEntradaOds(remesa);
-
-    let currentUser: User | null = null;
-    if (req.user) {
-      currentUser = await dataAdapter.getUserById(req.user.id);
-    }
-    if (!currentUser) {
-      currentUser = {
-        id: req.user?.id || 'admin',
-        username: req.user?.username || 'admin',
-        nombreCompleto: 'Usuario Administrador',
-        rol: 'ADMINISTRADOR',
-        cargo: 'Responsable',
-        email: '',
-        avatarInitials: 'AD',
-        activo: true,
-      };
+    // Prevención de doble envío / concurrencia
+    if (remesa.estado === 'ENVIANDO') {
+      const lastUpdate = remesa.actualizadoEn ? new Date(remesa.actualizadoEn).getTime() : 0;
+      const now = Date.now();
+      // Si lleva menos de 2 minutos procesándose, evitar envío concurrente / duplicado
+      if (now - lastUpdate < 120000) {
+        return res.status(409).json({
+          error: 'La remesa ya se está enviando a Doñana en este momento. Por favor, espere unos segundos a que finalice el proceso.',
+        });
+      }
     }
 
-    const sendResult = await sendEntradaEmail({
-      remesa,
-      odsBuffer,
-      destinatariosOverride,
-      user: currentUser,
-    });
+    const previousEstado = (remesa.estado === 'ENVIANDO' ? 'BORRADOR' : remesa.estado) || 'BORRADOR';
 
-    // Actualizar estado de la remesa a ENVIADO
-    remesa.estado = 'ENVIADO';
-    remesa.fechaEnvioEmail = new Date().toISOString();
-    remesa.destinatariosEmail = sendResult.recipients.join(', ');
-    remesa.archivoOdsNombre = remesa.archivoOdsNombre || `${(remesa.tituloOficial || 'Permisos_Marisma').replace(/[^\w.-]/g, '_')}.ods`;
+    // BLOQUEO PREVENTIVO: Marcar en base de datos como ENVIANDO de inmediato
+    await dataAdapter.updateEntradaRemesaEstado(remesa.id, { estado: 'ENVIANDO' });
+    remesa.estado = 'ENVIANDO';
 
-    const updated = await dataAdapter.saveEntradaRemesa(remesa);
+    try {
+      const { destinatariosOverride } = req.body;
+      const odsBuffer = await generateEntradaOds(remesa);
 
-    await auditLog(req, 'ENVIO_PERMISOS_DONANA', 'ENTRADA', remesa.id, {
-      titulo: remesa.tituloOficial,
-      destinatarios: sendResult.recipients,
-      bcc: sendResult.bcc,
-      messageId: sendResult.messageId,
-    });
+      let currentUser: User | null = null;
+      if (req.user) {
+        currentUser = await dataAdapter.getUserById(req.user.id);
+      }
+      if (!currentUser) {
+        currentUser = {
+          id: req.user?.id || 'admin',
+          username: req.user?.username || 'admin',
+          nombreCompleto: 'Usuario Administrador',
+          rol: 'ADMINISTRADOR',
+          cargo: 'Responsable',
+          email: '',
+          avatarInitials: 'AD',
+          activo: true,
+        };
+      }
 
-    res.json({ success: true, remesa: updated, sendResult });
+      const sendResult = await sendEntradaEmail({
+        remesa,
+        odsBuffer,
+        destinatariosOverride,
+        user: currentUser,
+      });
+
+      // Actualizar estado de la remesa a ENVIADO de forma definitiva
+      const fechaEnvioEmail = new Date().toISOString();
+      const destinatariosEmail = sendResult.recipients.join(', ');
+      const archivoOdsNombre = remesa.archivoOdsNombre || `${(remesa.tituloOficial || 'Permisos_Marisma').replace(/[^\w.-]/g, '_')}.ods`;
+
+      await dataAdapter.updateEntradaRemesaEstado(remesa.id, {
+        estado: 'ENVIADO',
+        fechaEnvioEmail,
+        destinatariosEmail,
+        archivoOdsNombre,
+      });
+
+      remesa.estado = 'ENVIADO';
+      remesa.fechaEnvioEmail = fechaEnvioEmail;
+      remesa.destinatariosEmail = destinatariosEmail;
+      remesa.archivoOdsNombre = archivoOdsNombre;
+
+      await auditLog(req, 'ENVIO_PERMISOS_DONANA', 'ENTRADA', remesa.id, {
+        titulo: remesa.tituloOficial,
+        destinatarios: sendResult.recipients,
+        bcc: sendResult.bcc,
+        messageId: sendResult.messageId,
+      });
+
+      res.json({ success: true, remesa, sendResult });
+    } catch (sendError: any) {
+      console.error('Error durante el envío de la remesa, revirtiendo estado en BD:', sendError);
+      await dataAdapter.updateEntradaRemesaEstado(remesa.id, { estado: previousEstado }).catch((revErr) => {
+        console.error('Error al revertir estado de remesa:', revErr);
+      });
+      throw sendError;
+    }
   } catch (error: any) {
     console.error('Error enviando remesa por email:', error);
     res.status(500).json({ error: error.message });
