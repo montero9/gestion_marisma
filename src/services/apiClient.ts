@@ -44,6 +44,18 @@ class ApiClient {
     return this.baseUrl;
   }
 
+  /**
+   * Genera una URL autenticada adjuntando el token JWT en el query string
+   * para enlaces directos, descargas o previsualizaciones en nueva pestaña (target="_blank")
+   */
+  public getAuthenticatedUrl(url: string): string {
+    if (!url) return '';
+    const fullUrl = url.startsWith('http') ? url : `${this.baseUrl}${url}`;
+    if (!this.token) return fullUrl;
+    const separator = fullUrl.includes('?') ? '&' : '?';
+    return `${fullUrl}${separator}token=${encodeURIComponent(this.token)}`;
+  }
+
   public getStatus(): ServerConnectionStatus {
     return this.status;
   }

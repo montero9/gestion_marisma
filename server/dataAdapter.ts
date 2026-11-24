@@ -49,12 +49,10 @@ export const dataAdapter = {
 
   async getUserByUsername(username: string): Promise<any | null> {
     const clean = username.trim().toLowerCase();
-    const targetUsernames = clean === 'admin' ? ['admin', 'antonio'] : [clean];
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .in('username', targetUsernames)
-      .limit(1)
+      .eq('username', clean)
       .maybeSingle();
     if (error) throw error;
     return data || null;
@@ -946,5 +944,100 @@ export const dataAdapter = {
     const { data: aniData, error: aniError } = await query.order('creado_en', { ascending: false });
     if (aniError) throw aniError;
     return aniData || [];
+  },
+
+  // 12. RESTAURACIÓN DE COPIAS DE SEGURIDAD
+  async restoreFromBackupData(backupData: any): Promise<{
+    restoredCounts: Record<string, number>;
+  }> {
+    if (!backupData || typeof backupData !== 'object') {
+      throw new Error('Estructura de datos de copia de seguridad no válida.');
+    }
+
+    const counts: Record<string, number> = {
+      campaigns: 0,
+      associations: 0,
+      owners: 0,
+      stallions: 0,
+      animals: 0,
+      movements: 0,
+      settings: 0,
+    };
+
+    // 1. Campañas
+    if (Array.isArray(backupData.campaigns)) {
+      for (const c of backupData.campaigns) {
+        const nombre = typeof c === 'string' ? c : c.nombre;
+        if (nombre) {
+          await supabase.from('campaigns').upsert(
+            { nombre, activa: 0, creado_en: new Date().toISOString() },
+            { onConflict: 'nombre' }
+          );
+          counts.campaigns++;
+        }
+      }
+    }
+
+    // 2. Asociaciones
+    if (Array.isArray(backupData.associations)) {
+      for (const a of backupData.associations) {
+        if (a && a.id && a.nombre) {
+          await this.saveAssociation(a);
+          counts.associations++;
+        }
+      }
+    }
+
+    // 3. Propietarios
+    if (Array.isArray(backupData.owners)) {
+      for (const o of backupData.owners) {
+        if (o && o.id && o.nombreCompleto) {
+          await this.saveOwner(o);
+          counts.owners++;
+        }
+      }
+    }
+
+    // 4. Sementales
+    if (Array.isArray(backupData.stallions)) {
+      for (const s of backupData.stallions) {
+        if (s && s.id && s.nombre) {
+          await this.saveStallion(s);
+          counts.stallions++;
+        }
+      }
+    }
+
+    // 5. Animales
+    if (Array.isArray(backupData.animals)) {
+      for (const an of backupData.animals) {
+        if (an && an.id && an.plazaNumero !== undefined) {
+          await this.saveAnimal(an);
+          counts.animals++;
+        }
+      }
+    }
+
+    // 6. Movimientos
+    if (Array.isArray(backupData.movements)) {
+      for (const m of backupData.movements) {
+        if (m && m.id && m.animalId) {
+          await this.saveMovement(m);
+          counts.movements++;
+        }
+      }
+    }
+
+    // 7. Configuración (preservando credenciales de correo existentes si no vienen en el backup)
+    if (backupData.settings && typeof backupData.settings === 'object') {
+      for (const [key, val] of Object.entries(backupData.settings)) {
+        if (typeof val === 'string' && key !== 'entradas_smtp_pass') {
+          await this.setSetting(key, val);
+          counts.settings++;
+        }
+      }
+    }
+
+    return { restoredCounts: counts };
   },
 };

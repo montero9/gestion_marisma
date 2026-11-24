@@ -8,6 +8,7 @@ import {
   User,
 } from '../types/marisma';
 import { ApiService } from '../services/apiService';
+import { apiClient } from '../services/apiClient';
 import { EnviandoEmailModal } from './EnviandoEmailModal';
 import {
   X,
@@ -55,9 +56,10 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
   owners,
   activeCampaign,
   currentUser,
-  readOnly = false,
+  readOnly: readOnlyProp = false,
   onAnimalsUpdated,
 }) => {
+  const readOnly = readOnlyProp || currentUser.rol !== 'ADMINISTRADOR';
   // Solo equinos censados de la campaña correspondiente, desduplicados por microchip / plaza
   const equinos = useMemo(() => {
     const targetCamp = remesa?.campana || activeCampaign;
@@ -1299,7 +1301,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                                         <div className="pt-1">
                                           {ani.guiaArchivoUrl ? (
                                             <a
-                                              href={ani.guiaArchivoUrl}
+                                              href={apiClient.getAuthenticatedUrl(ani.guiaArchivoUrl)}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900"
@@ -1727,24 +1729,26 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={handleSendEmail}
-              disabled={isSaving || isSending || formData.estado === 'ENVIANDO'}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
-            >
-              {isSending || formData.estado === 'ENVIANDO' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Enviando a Doñana...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Enviar por Correo a Doñana</span>
-                </>
-              )}
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                disabled={isSaving || isSending || formData.estado === 'ENVIANDO'}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+              >
+                {isSending || formData.estado === 'ENVIANDO' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Enviando a Doñana...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Enviar por Correo a Doñana</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

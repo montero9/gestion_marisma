@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import dotenv from 'dotenv';
 import JSZip from 'jszip';
+import path from 'node:path';
 import { OdsExportService } from './services/odsExportService.js';
 import { generateEntradaOds } from './services/odsEntradasService.js';
 import { sendEntradaEmail, testSmtpConnection, getSmtpConfig, encryptPassword } from './services/emailService.js';
@@ -35,6 +36,7 @@ import {
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 // 1. Hardening y Cabeceras de Seguridad
@@ -54,9 +56,13 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   
+  const scriptSrc = process.env.NODE_ENV === 'production'
+    ? "script-src 'self'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;"
+    `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;`
   );
 
   next();
@@ -68,16 +74,22 @@ const configuredOrigins = new Set(
 );
 app.use(cors({
   origin(origin, callback) {
+    if (!origin) return callback(null, true);
     const isLocalDevelopment = process.env.NODE_ENV !== 'production' &&
-      (!origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
-    if (!origin || configuredOrigins.has(origin) || isLocalDevelopment) return callback(null, true);
-    return callback(null, true); // Permitir peticiones en subdominios de Vercel
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const isVercelDomain = /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin);
+
+    if (isLocalDevelopment || configuredOrigins.has(origin) || isVercelDomain) {
+      return callback(null, true);
+    }
+    return callback(new Error('Acceso no permitido por política de CORS'));
   },
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 3. Rate Limiter en memoria para intentos fallidos
+// 3. Rate Limiter resistente para entornos locales y Serverless
 interface RateLimitBucket {
   failedAttempts: number;
   blockedUntil: number;
@@ -99,10 +111,23 @@ function resetFailedLogin(ip: string) {
   loginRateLimitStore.delete(ip);
 }
 
-function isIpBlocked(ip: string): boolean {
-  if (process.env.NODE_ENV !== 'production') return false;
+async function isIpBlocked(ip: string): Promise<boolean> {
   const record = loginRateLimitStore.get(ip);
-  return Boolean(record && record.blockedUntil > Date.now());
+  if (record && record.blockedUntil > Date.now()) return true;
+
+  try {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const recentLogs = await dataAdapter.getAuditLogs(50);
+    const failedCount = (recentLogs || []).filter(
+      (l) => l.accion === 'LOGIN_FALLIDO' && l.ip === ip && l.fecha >= twoMinutesAgo
+    ).length;
+
+    if (failedCount >= 5) {
+      return true;
+    }
+  } catch {}
+
+  return false;
 }
 
 // 4. Middlewares de Autenticación y Autorización
@@ -144,13 +169,25 @@ async function auditLog(req: AuthenticatedRequest, accion: string, entidad: stri
   });
 }
 
-// Configuración de Multer para subida a memoria
+// Configuración de Multer para subida de documentos a memoria
 const uploadMemory = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
   fileFilter: (_req, file, cb) => {
     const allowed = new Set(['application/pdf', 'image/jpeg', 'image/png']);
     if (!allowed.has(file.mimetype)) return cb(new Error('Sólo se permiten PDF, JPG y PNG'));
+    cb(null, true);
+  },
+});
+
+// Configuración de Multer para restauración de copias de seguridad (.ZIP)
+const uploadZip = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
+  fileFilter: (_req, file, cb) => {
+    if (!file.originalname.toLowerCase().endsWith('.zip')) {
+      return cb(new Error('Sólo se permiten archivos de copia de seguridad en formato .ZIP'));
+    }
     cb(null, true);
   },
 });
@@ -447,25 +484,29 @@ app.post('/api/animals/:id/annotations', async (req: AuthenticatedRequest, res) 
   }
 });
 
-// Servicio seguro de documentos desde Supabase Storage
-app.get('/uploads/documents/:filename', async (req: AuthenticatedRequest, res) => {
+// Servicio seguro y autenticado de documentos desde Supabase Storage
+const handleDocumentDownload = async (req: AuthenticatedRequest, res: any) => {
   try {
     const { filename } = req.params;
-    const { data, error } = await dataAdapter.downloadDocument(filename);
+    const safeFilename = path.basename(filename);
+    const { data, error } = await dataAdapter.downloadDocument(safeFilename);
     if (error || !data) return res.status(404).send('Documento no encontrado');
 
     const arrayBuffer = await data.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    if (filename.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
-    else if (filename.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
-    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
+    if (safeFilename.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
+    else if (safeFilename.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
+    else if (safeFilename.endsWith('.jpg') || safeFilename.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
 
     res.send(buffer);
   } catch (err: any) {
     res.status(500).send('Error recuperando documento');
   }
-});
+};
+
+app.get('/uploads/documents/:filename', requireAuth, handleDocumentDownload);
+app.get('/api/uploads/documents/:filename', requireAuth, handleDocumentDownload);
 
 // ==========================================
 // 4. GANADEROS (OWNERS) Y ASOCIACIONES
@@ -730,7 +771,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     const ip = String(req.ip || req.socket.remoteAddress || '');
 
-    if (isIpBlocked(ip)) {
+    if (await isIpBlocked(ip)) {
       return res.status(429).json({ error: 'Demasiados intentos fallidos. Espere 2 minutos.' });
     }
 
@@ -741,6 +782,15 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await dataAdapter.getUserByUsername(username.trim().toLowerCase());
     if (!user || !user.activo || !user.password_hash || !verifyPassword(password, user.password_hash)) {
       recordFailedLogin(ip);
+      await dataAdapter.recordAudit({
+        usuarioNombre: username ? username.trim() : 'Desconocido',
+        usuarioRol: 'CONSULTA',
+        accion: 'LOGIN_FALLIDO',
+        entidad: 'USUARIO',
+        entidadId: username ? username.trim() : undefined,
+        detalles: { motivo: 'Credenciales inválidas' },
+        ip,
+      });
       return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo' });
     }
 
@@ -1029,6 +1079,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req: AuthenticatedReque
       dataAdapter.getSettings(),
     ]);
 
+    const safeSettings = { ...settings };
+    delete safeSettings['entradas_smtp_pass'];
+
     const backupData = {
       exportDate: new Date().toISOString(),
       version: '1.0',
@@ -1041,7 +1094,7 @@ app.get('/api/admin/backup/export', requireAdmin, async (req: AuthenticatedReque
         stallions,
         users,
         audit,
-        settings,
+        settings: safeSettings,
       },
     };
 
@@ -1063,6 +1116,59 @@ app.get('/api/admin/backup/export', requireAdmin, async (req: AuthenticatedReque
 app.get('/api/admin/backup/download', requireAdmin, async (req: AuthenticatedRequest, res) => {
   // Redirige al export estándar
   res.redirect('/api/admin/backup/export');
+});
+
+app.post('/api/admin/backup/restore-zip', requireAdmin, uploadZip.single('file'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const file = req.file;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'No se ha subido ningún archivo ZIP de copia de seguridad' });
+    }
+
+    const zip = await JSZip.loadAsync(file.buffer);
+    const exportFile = zip.file('database_export.json');
+    if (!exportFile) {
+      return res.status(400).json({ error: 'El archivo ZIP no contiene una copia de seguridad válida (database_export.json)' });
+    }
+
+    const jsonContent = await exportFile.async('string');
+    const parsed = JSON.parse(jsonContent);
+
+    const { restoredCounts } = await dataAdapter.restoreFromBackupData(parsed.data);
+
+    // Restaurar documentos si existen dentro de documents/
+    let restoredDocs = 0;
+    for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+      if (relativePath.startsWith('documents/') && !zipEntry.dir) {
+        const docName = path.basename(relativePath);
+        if (docName) {
+          const docBuffer = await zipEntry.async('nodebuffer');
+          const mimeType = docName.endsWith('.pdf')
+            ? 'application/pdf'
+            : docName.endsWith('.png')
+            ? 'image/png'
+            : 'image/jpeg';
+          await dataAdapter.uploadDocument(docName, docBuffer, mimeType);
+          restoredDocs++;
+        }
+      }
+    }
+
+    await auditLog(req, 'RESTAURACION_BACKUP', 'SISTEMA', 'RESTORE_ZIP', {
+      fechaCopia: parsed.exportDate,
+      restaurados: restoredCounts,
+      documentosRestaurados: restoredDocs,
+    });
+
+    res.json({
+      success: true,
+      message: 'Copia de seguridad restaurada correctamente',
+      documentosRestaurados: restoredDocs,
+    });
+  } catch (error: any) {
+    console.error('Error restaurando backup ZIP:', error);
+    res.status(500).json({ error: 'Error al restaurar la copia de seguridad: ' + error.message });
+  }
 });
 
 // ==========================================
@@ -1460,6 +1566,15 @@ app.post('/api/settings/smtp-test', async (req: AuthenticatedRequest, res) => {
     console.error('Error probando SMTP:', error);
     res.status(400).json({ error: error.message });
   }
+});
+
+// Middleware global para manejo seguro de errores de Express y Multer
+app.use((err: any, _req: any, res: any, next: any) => {
+  if (err) {
+    console.error('[EXPRESS ERROR]:', err.message || err);
+    return res.status(err.status || 400).json({ error: err.message || 'Error procesando la solicitud' });
+  }
+  next();
 });
 
 export { app };

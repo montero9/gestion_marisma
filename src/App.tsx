@@ -576,8 +576,9 @@ export default function App() {
     try {
       const res = await ApiService.switchUser(user.id);
       handleLogin(res.user);
-    } catch {
-      handleLogin(user);
+    } catch (err: any) {
+      console.error('Error al cambiar de cuenta:', err);
+      alert(err.message || 'No se pudo cambiar de cuenta. Verifique sus permisos.');
     }
   };
 

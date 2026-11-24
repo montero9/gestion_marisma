@@ -69,6 +69,8 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
   const [editingRemesa, setEditingRemesa] = useState<EntradaRemesa | null>(null);
   const [isConsultaOpen, setIsConsultaOpen] = useState(false);
 
+  const isReadOnlyUser = currentUser.rol !== 'ADMINISTRADOR';
+
   // Acciones en curso
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [sendingModalData, setSendingModalData] = useState<{ isOpen: boolean; titulo: string }>({
@@ -281,14 +283,16 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
             <span>Consultar por Ganadero</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Solicitud</span>
-          </button>
+          {!isReadOnlyUser && (
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Solicitud</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -363,14 +367,16 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                 : 'Cree la primera solicitud de acceso para Miércoles/Jueves o Sábado/Domingo.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Crear Nueva Solicitud</span>
-          </button>
+          {!isReadOnlyUser && (
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Crear Nueva Solicitud</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -472,73 +478,87 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
                     <span className="hidden lg:inline text-[11px]">ODS</span>
                   </button>
 
-                  {remesa.estado === 'ENVIANDO' ? (
+                  {isReadOnlyUser ? (
                     <button
                       type="button"
-                      disabled={true}
-                      className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-not-allowed opacity-90 shadow-2xs"
-                      title="Envío en progreso a Doñana..."
+                      onClick={() => handleView(remesa)}
+                      className="px-2.5 py-1.5 bg-gray-50 hover:bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Ver detalles de la solicitud (Solo lectura)"
                     >
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span className="text-[11px]">Enviando...</span>
+                      <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                      <span className="text-[11px]">Ver Solicitud</span>
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleDirectSendEmail(remesa)}
-                      disabled={isProcessing}
-                      className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs disabled:opacity-50"
-                      title={remesa.estado === 'ENVIADO' ? 'Reenviar a Doñana' : 'Enviar a Doñana'}
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <>
+                      {remesa.estado === 'ENVIANDO' ? (
+                        <button
+                          type="button"
+                          disabled={true}
+                          className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-not-allowed opacity-90 shadow-2xs"
+                          title="Envío en progreso a Doñana..."
+                        >
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span className="text-[11px]">Enviando...</span>
+                        </button>
                       ) : (
-                        <Send className="w-3.5 h-3.5" />
+                        <button
+                          type="button"
+                          onClick={() => handleDirectSendEmail(remesa)}
+                          disabled={isProcessing}
+                          className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs disabled:opacity-50"
+                          title={remesa.estado === 'ENVIADO' ? 'Reenviar a Doñana' : 'Enviar a Doñana'}
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          <span className="text-[11px]">{remesa.estado === 'ENVIADO' ? 'Reenviar' : 'Enviar'}</span>
+                        </button>
                       )}
-                      <span className="text-[11px]">{remesa.estado === 'ENVIADO' ? 'Reenviar' : 'Enviar'}</span>
-                    </button>
+
+                      {remesa.estado === 'BORRADOR' && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsSent(remesa)}
+                          disabled={isProcessing}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          title="Marcar como enviado manualmente (comunicación telefónica o presencial)"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-[11px] hidden sm:inline">Marcar Enviado</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(remesa)}
+                        disabled={remesa.estado === 'ENVIANDO'}
+                        className={`p-1.5 rounded-lg transition ${
+                          remesa.estado === 'ENVIANDO'
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer'
+                        }`}
+                        title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Editar remesa'}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(remesa)}
+                        disabled={isProcessing || remesa.estado === 'ENVIANDO'}
+                        className={`p-1.5 rounded-lg transition ${
+                          remesa.estado === 'ENVIANDO'
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
+                        }`}
+                        title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Eliminar remesa y sus documentos'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
-
-                  {remesa.estado === 'BORRADOR' && (
-                    <button
-                      type="button"
-                      onClick={() => handleMarkAsSent(remesa)}
-                      disabled={isProcessing}
-                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      title="Marcar como enviado manualmente (comunicación telefónica o presencial)"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-[11px] hidden sm:inline">Marcar Enviado</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(remesa)}
-                    disabled={remesa.estado === 'ENVIANDO'}
-                    className={`p-1.5 rounded-lg transition ${
-                      remesa.estado === 'ENVIANDO'
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer'
-                    }`}
-                    title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Editar remesa'}
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(remesa)}
-                    disabled={isProcessing || remesa.estado === 'ENVIANDO'}
-                    className={`p-1.5 rounded-lg transition ${
-                      remesa.estado === 'ENVIANDO'
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
-                    }`}
-                    title={remesa.estado === 'ENVIANDO' ? 'Envío en curso...' : 'Eliminar remesa y sus documentos'}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             );
@@ -635,7 +655,7 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
         owners={owners}
         activeCampaign={activeCampaign}
         currentUser={currentUser}
-        readOnly={isReadOnlyEditor}
+        readOnly={isReadOnlyEditor || isReadOnlyUser}
         onAnimalsUpdated={onAnimalsUpdated}
       />
 

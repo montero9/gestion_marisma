@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Animal, Movement, User } from '../types/marisma';
 import { ApiService } from '../services/apiService';
+import { apiClient } from '../services/apiClient';
 import { HinojosLogo } from './HinojosLogo';
 import {
   X,
@@ -164,7 +165,7 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
   const handleDownloadDoc = (docName: string, url?: string, fileData?: string) => {
     const a = document.createElement('a');
     if (url) {
-      a.href = url;
+      a.href = apiClient.getAuthenticatedUrl(url);
       a.target = '_blank';
     } else if (fileData) {
       a.href = fileData;
@@ -564,7 +565,7 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                       )}
                       {item.guia_archivo_url && (
                         <a
-                          href={item.guia_archivo_url}
+                          href={apiClient.getAuthenticatedUrl(item.guia_archivo_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-bold text-blue-700 hover:underline flex items-center gap-1"

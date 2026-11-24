@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Animal, AnimalType, Owner, Rastra, AnimalDocument, Annotation, User, PresenceStatus } from '../types/marisma';
+import { apiClient } from '../services/apiClient';
 import {
   CAPAS_PELAJES,
   getNextPlazaNumber,
@@ -356,7 +357,7 @@ export const AnimalModal: React.FC<AnimalModalProps> = ({
   const handleDownloadDocument = (doc: AnimalDocument) => {
     if (doc.url) {
       const a = document.createElement('a');
-      a.href = doc.url;
+      a.href = apiClient.getAuthenticatedUrl(doc.url);
       a.target = '_blank';
       a.download = doc.nombre;
       a.click();

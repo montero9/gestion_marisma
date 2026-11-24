@@ -4,12 +4,38 @@ import { SmtpConfig, EntradaRemesa, User } from '../../src/types/marisma.js';
 import { dataAdapter } from '../dataAdapter.js';
 
 // Clave y algoritmo para blindar y cifrar contraseñas en reposo (AES-256-GCM)
+const secretForEncryption = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET;
+if (!secretForEncryption && process.env.NODE_ENV === 'production') {
+  throw new Error('[SEGURIDAD CRÍTICA] Debe configurar ENCRYPTION_SECRET o JWT_SECRET en las variables de entorno.');
+}
 const ENCRYPTION_KEY = crypto.scryptSync(
-  process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET || 'marisma-de-hinojos-smtp-secret-key-32',
-  'marisma_salt',
+  secretForEncryption || 'marisma-de-hinojos-smtp-secret-key-32',
+  process.env.ENCRYPTION_SALT || 'marisma_salt',
   32
 );
 const ALGORITHM = 'aes-256-gcm';
+
+/**
+ * Valida que un host SMTP sea una dirección externa segura y no una IP privada o metadato de nube (SSRF)
+ */
+export function isSafeSmtpHost(host: string): boolean {
+  if (!host || typeof host !== 'string') return false;
+  const clean = host.trim().toLowerCase();
+
+  const blockedHosts = ['localhost', '127.0.0.1', '::1', '0.0.0.0', '169.254.169.254', 'metadata.google.internal'];
+  if (blockedHosts.includes(clean)) return false;
+
+  if (
+    /^10\./.test(clean) ||
+    /^192\.168\./.test(clean) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(clean) ||
+    /^127\./.test(clean)
+  ) {
+    return false;
+  }
+
+  return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(clean);
+}
 
 export function encryptPassword(plainText: string): string {
   if (!plainText) return '';
@@ -89,6 +115,14 @@ export async function testSmtpConnection(config: SmtpConfig, testRecipient?: str
     throw new Error('Faltan datos de configuración SMTP (servidor o usuario)');
   }
 
+  if (!isSafeSmtpHost(config.host)) {
+    throw new Error('El servidor SMTP especificado no es una dirección de host externa válida o está restringida.');
+  }
+
+  if (config.port && (config.port < 1 || config.port > 65535)) {
+    throw new Error('El puerto SMTP debe ser un número válido entre 1 y 65535.');
+  }
+
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port || 587,
@@ -98,7 +132,7 @@ export async function testSmtpConnection(config: SmtpConfig, testRecipient?: str
       pass: config.pass,
     },
     tls: {
-      rejectUnauthorized: false, // Permitir certificados autofirmados si fuera necesario
+      rejectUnauthorized: process.env.NODE_ENV === 'production' && process.env.SMTP_ALLOW_SELFSIGNED !== 'true',
     },
   });
 
@@ -167,7 +201,7 @@ export async function sendEntradaEmail(params: {
       pass: config.pass,
     },
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: process.env.NODE_ENV === 'production' && process.env.SMTP_ALLOW_SELFSIGNED !== 'true',
     },
   });
 

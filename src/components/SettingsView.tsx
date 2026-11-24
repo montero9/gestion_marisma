@@ -77,22 +77,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onOpenNewCampaignWizard,
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
-    // Si el usuario no es ADMINISTRADOR, JAMÁS debe abrir en secciones administrativas
-    if (currentUser.rol !== 'ADMINISTRADOR') {
-      return 'ESTADISTICAS';
-    }
     try {
       const saved = localStorage.getItem('marisma_settings_section') as SettingsSection | null;
       if (saved && ['ESTADISTICAS', 'CAMPANAS', 'USUARIOS', 'SMTP', 'COPIA_SEGURIDAD', 'CAMPANAS_BACKUP'].includes(saved)) {
-        return saved === 'CAMPANAS_BACKUP' ? 'CAMPANAS' : saved;
+        const target = saved === 'CAMPANAS_BACKUP' ? 'CAMPANAS' : saved;
+        if (currentUser.rol !== 'ADMINISTRADOR' && target !== 'ESTADISTICAS' && target !== 'CAMPANAS') {
+          return 'ESTADISTICAS';
+        }
+        return target;
       }
     } catch {}
     return 'ESTADISTICAS';
   });
 
-  // Si el usuario cambia o su rol no es ADMINISTRADOR, asegurar que se redirija inmediatamente a ESTADISTICAS
+  // Si el usuario no es ADMINISTRADOR, no permitir secciones exclusivas de administración (USUARIOS, SMTP, COPIA_SEGURIDAD)
   useEffect(() => {
-    if (currentUser.rol !== 'ADMINISTRADOR' && activeSection !== 'ESTADISTICAS') {
+    const adminOnlySections: SettingsSection[] = ['USUARIOS', 'SMTP', 'COPIA_SEGURIDAD'];
+    if (currentUser.rol !== 'ADMINISTRADOR' && adminOnlySections.includes(activeSection)) {
       setActiveSection('ESTADISTICAS');
       try {
         localStorage.setItem('marisma_settings_section', 'ESTADISTICAS');
@@ -659,20 +660,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>Estadísticas de la Marisma</span>
           </button>
 
+          <button
+            onClick={() => handleSelectSection('CAMPANAS')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
+              activeSection === 'CAMPANAS' || activeSection === 'CAMPANAS_BACKUP'
+                ? 'bg-[#008744] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Campañas</span>
+          </button>
+
           {currentUser.rol === 'ADMINISTRADOR' && (
             <>
-              <button
-                onClick={() => handleSelectSection('CAMPANAS')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
-                  activeSection === 'CAMPANAS' || activeSection === 'CAMPANAS_BACKUP'
-                    ? 'bg-[#008744] text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Campañas</span>
-              </button>
-
               <button
                 onClick={() => handleSelectSection('USUARIOS')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
@@ -1158,10 +1159,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* SECTION 3: CAMPAÑAS DE ADJUDICACIÓN - Solo visible para ADMINISTRADOR */}
-      {(activeSection === 'CAMPANAS' || activeSection === 'CAMPANAS_BACKUP') && currentUser.rol === 'ADMINISTRADOR' && (
+      {/* SECTION 3: CAMPAÑAS DE ADJUDICACIÓN - Visible para todos, pero solo ADMINISTRADOR edita */}
+      {(activeSection === 'CAMPANAS' || activeSection === 'CAMPANAS_BACKUP') && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="max-w-3xl mx-auto">
             {/* Campaign Management */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -1171,16 +1172,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </h2>
               </div>
 
-              <div>
-                <button
-                  type="button"
-                  onClick={() => onOpenNewCampaignWizard ? onOpenNewCampaignWizard('') : handleOpenWizard()}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#008744] hover:bg-[#00743a] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Crear nueva campaña con traspaso</span>
-                </button>
-              </div>
+              {currentUser.rol === 'ADMINISTRADOR' && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => onOpenNewCampaignWizard ? onOpenNewCampaignWizard('') : handleOpenWizard()}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#008744] hover:bg-[#00743a] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Crear nueva campaña con traspaso</span>
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-2 pt-2">
                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -1203,13 +1206,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           />
                           <button
                             onClick={handleSaveEditCampaign}
-                            className="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700"
+                            className="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 cursor-pointer"
                           >
                             Guardar
                           </button>
                           <button
                             onClick={() => setEditingCampaign(null)}
-                            className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
+                            className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 cursor-pointer"
                           >
                             Cancelar
                           </button>
@@ -1225,7 +1228,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             ) : (
                               <button
                                 onClick={() => onSetActiveCampaign(camp)}
-                                className="text-emerald-700 hover:underline text-xs"
+                                className="text-emerald-700 hover:underline text-xs cursor-pointer font-bold"
                               >
                                 Activar vista
                               </button>
@@ -1236,7 +1239,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleStartEditCampaign(camp)}
-                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
                                 title="Editar nombre de la campaña"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -1244,7 +1247,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               {campaigns.length > 1 && (
                                 <button
                                   onClick={() => handleDeleteCampaignPrompt(camp)}
-                                  className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
                                   title="Eliminar campaña y registros asociados"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1256,54 +1259,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       )}
                     </div>
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Backup & Data Tools */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-700" />
-                <h2 className="text-base font-bold text-gray-900">
-                  Copias de Seguridad y Respaldo
-                </h2>
-              </div>
-
-              <p className="text-xs text-gray-600">
-                Descarga una copia de seguridad íntegra de toda la base de datos (animales, propietarios, sementales, movimientos y documentos) en formato JSON para archivar en el Ayuntamiento o transferir a otro equipo.
-              </p>
-
-              <div className="space-y-2.5">
-                <button
-                  onClick={handleBackupExport}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-black text-white text-xs sm:text-sm font-bold rounded-lg transition shadow-xs"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar Copia de Seguridad Completa (.JSON)</span>
-                </button>
-
-                <label className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-bold rounded-lg transition cursor-pointer shadow-xs">
-                  <Upload className="w-4 h-4 text-emerald-700" />
-                  <span>Restaurar desde Copia de Seguridad (.JSON)</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleRestoreImport}
-                    className="hidden"
-                  />
-                </label>
-
-                <div className="pt-4 border-t border-gray-100">
-                  <button
-                    onClick={handleResetDefaults}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold rounded-lg transition"
-                  >
-                    <RefreshCw className="w-4 h-4 text-rose-600" />
-                    <span>Restablecer Datos Originales (Excel Hinojos)</span>
-                  </button>
-                  <p className="text-[11px] text-gray-400 text-center mt-1">
-                    Recarga los datos de Abel Valero, Cándido Naranjo, rastra Dudoso, etc.
-                  </p>
                 </div>
               </div>
             </div>

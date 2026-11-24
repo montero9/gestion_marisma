@@ -16,6 +16,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { ApiService } from '../services/apiService';
+import { StorageService } from '../services/storageService';
 
 interface BackupViewProps {
   onReloadAllData: () => void;
@@ -166,6 +167,63 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
     }
   };
 
+  // Restaurar JSON secundario
+  const handleRestoreJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      alert('El archivo debe ser un archivo de texto en formato .JSON');
+      if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
+      return;
+    }
+
+    if (
+      !confirm(
+        '¿Está seguro de restaurar desde este archivo JSON?\n\nLos registros actuales de la base de datos municipal serán reemplazados por los datos contenidos en el archivo.'
+      )
+    ) {
+      if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setFeedbackMsg({ text: 'Restaurando base de datos desde archivo JSON...', type: 'info' });
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        await ApiService.restoreBackup(parsed);
+        setFeedbackMsg({ text: 'Copia de seguridad (.JSON) restaurada correctamente.', type: 'success' });
+        if (onNotify) onNotify('Copia de seguridad (.JSON) restaurada correctamente.');
+        await fetchStats();
+        onReloadAllData();
+      } catch (err: any) {
+        console.error('Error restaurando backup JSON:', err);
+        setFeedbackMsg({
+          text: `Error al restaurar JSON: ${err.message || 'Formato de archivo inválido'}`,
+          type: 'error',
+        });
+      } finally {
+        if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Restablecer a datos de fábrica
+  const handleResetDefaults = () => {
+    if (
+      confirm(
+        '¿Desea restablecer todos los datos a la plantilla original de la Marisma de Hinojos (según la captura de Excel)? Los cambios no respaldados se perderán.'
+      )
+    ) {
+      StorageService.resetToFactoryDefaults();
+      onReloadAllData();
+      setFeedbackMsg({ text: 'Datos locales restablecidos con éxito a la hoja original de Hinojos.', type: 'success' });
+      if (onNotify) onNotify('Datos locales restablecidos a la plantilla original.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -300,10 +358,10 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-1 text-xs text-amber-900">
               <span className="font-bold flex items-center gap-1 text-amber-800">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Protección Automática y Verificación:
+                Advertencia de Sobreescritura:
               </span>
               <p className="text-[11px] text-amber-800 leading-relaxed">
-                Antes de sobreescribir los datos, el sistema realiza una copia de seguridad y verificación automática previa para garantizar la integridad del censo municipal.
+                Al restaurar, los datos actuales de la base de datos municipal se sobreescribirán con los registros del archivo. Se recomienda descargar previamente una copia de seguridad (.ZIP) si desea conservar el estado actual.
               </p>
             </div>
           </div>
@@ -352,9 +410,9 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
               <p className="text-gray-600 leading-relaxed pt-1">
                 La base de datos actual será reemplazada por los registros contenidos en este archivo ZIP. Los documentos oficiales que no existan serán restaurados.
               </p>
-              <p className="text-emerald-700 font-bold flex items-center gap-1 pt-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Se creará una copia de seguridad previa de emergencia antes de ejecutar.
+              <p className="text-amber-800 font-semibold flex items-center gap-1 pt-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                Asegúrese de haber descargado una copia de seguridad (.ZIP) previa si desea guardar los datos actuales.
               </p>
             </div>
 
@@ -382,24 +440,50 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
         </div>
       )}
 
-      {/* Sección Secundaria: Exportación JSON de compatibilidad */}
-      <div className="bg-gray-50/70 rounded-xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div>
-            <span className="font-bold text-gray-800 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-gray-500" />
-              Respaldo Alternativo en Formato JSON
-            </span>
-            <p className="text-gray-500 text-[11px] mt-0.5">
-              Exportación en texto plano compatible con scripts externos o migraciones de base de datos relacionales.
-            </p>
-          </div>
+      {/* Sección Secundaria: Respaldo JSON y Datos Originales */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+          <FileText className="w-5 h-5 text-gray-700" />
+          <h2 className="text-base font-bold text-gray-900">
+            Respaldo Secundario en Formato JSON y Restablecimiento
+          </h2>
+        </div>
+
+        <p className="text-xs text-gray-600 leading-relaxed">
+          Herramientas de respaldo en formato JSON para transferencias rápidas o migraciones externas, y opción de restablecimiento de datos originales de muestra.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           <button
+            type="button"
             onClick={handleExportJson}
             disabled={isExportingJson}
-            className="px-3.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 font-bold rounded-lg border border-gray-300 transition text-xs shadow-2xs self-start sm:self-auto"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
           >
-            {isExportingJson ? 'Exportando...' : 'Descargar JSON'}
+            <Download className="w-3.5 h-3.5" />
+            <span>{isExportingJson ? 'Exportando...' : 'Descargar JSON'}</span>
+          </button>
+
+          <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition cursor-pointer shadow-xs">
+            <Upload className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Restaurar desde JSON</span>
+            <input
+              type="file"
+              accept=".json"
+              ref={jsonFileInputRef}
+              onChange={handleRestoreJson}
+              className="hidden"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={handleResetDefaults}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold rounded-lg transition cursor-pointer"
+            title="Recarga los datos de demostración originales (Excel Hinojos)"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-rose-600" />
+            <span>Restablecer Datos Originales</span>
           </button>
         </div>
       </div>

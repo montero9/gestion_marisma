@@ -7,6 +7,9 @@ const developmentSecret = crypto.randomBytes(48).toString('base64url');
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (secret && secret.length >= 16) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[SEGURIDAD CRÍTICA] JWT_SECRET es obligatorio en producción y debe tener al menos 16 caracteres.');
+  }
   return developmentSecret;
 }
 
@@ -70,7 +73,11 @@ export function verifyToken(token: string): { id: string; username: string; rol:
       .update(`${header}.${data}`)
       .digest('base64url');
 
-    if (signature !== expectedSignature) return null;
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSignature);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
 
     const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
     const now = Math.floor(Date.now() / 1000);
@@ -91,12 +98,18 @@ export interface AuthenticatedRequest extends Request {
  * Middleware de Autenticación: exige un token Bearer válido
  */
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  let token: string | null = null;
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return res.status(401).json({ error: 'Acceso no autorizado: Se requiere token de sesión' });
   }
 
-  const token = authHeader.split(' ')[1];
   const payload = verifyToken(token);
   if (!payload) {
     return res.status(401).json({ error: 'Sesión expirada o token inválido' });

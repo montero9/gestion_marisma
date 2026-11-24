@@ -376,16 +376,18 @@ export const OwnersView: React.FC<OwnersViewProps> = ({
                 </th>
 
                 {/* 4. Acciones */}
-                <th className="py-2.5 px-3 text-center whitespace-nowrap w-[110px]">
-                  <span>GESTIÓN</span>
-                </th>
+                {!isReadOnly && (
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-[110px]">
+                    <span>GESTIÓN</span>
+                  </th>
+                )}
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-200 bg-white">
               {filteredOwners.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-gray-500">
+                  <td colSpan={isReadOnly ? 3 : 4} className="py-12 text-center text-gray-500">
                     <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                     <p className="text-base font-semibold text-gray-700">No se encontraron propietarios</p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -467,36 +469,34 @@ export const OwnersView: React.FC<OwnersViewProps> = ({
                         </td>
 
                         {/* 4. Acciones */}
-                        <td className="py-3 px-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            {!isReadOnly && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(owner)}
-                                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                                  title="Editar datos del propietario"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleInitiateDeleteOwner(owner)}
-                                  className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                                  title="Eliminar propietario"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                        {!isReadOnly && (
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(owner)}
+                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                title="Editar datos del propietario"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleInitiateDeleteOwner(owner)}
+                                className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                title="Eliminar propietario"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
 
                       {/* Sub-fila expandible con el listado de animales */}
                       {isExpanded && (
                         <tr className="bg-slate-50 border-b-2 border-emerald-300">
-                          <td colSpan={4} className="p-3 sm:p-4">
+                          <td colSpan={isReadOnly ? 3 : 4} className="p-3 sm:p-4">
                             <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs">
                               <div className="pb-2.5 mb-2.5 border-b border-gray-100">
                                 <div className="flex items-center justify-between">

@@ -264,11 +264,11 @@ export const ApiService = {
     return res;
   },
 
-  async switchUser(userId: string): Promise<{ token: string; user: User }> {
+  async switchUser(targetUserId: string): Promise<{ token: string; user: User }> {
     const res = await apiClient.request<{ token: string; user: User }>('/api/auth/switch-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ targetUserId }),
     });
     apiClient.setToken(res.token);
     this.setCurrentUser(res.user);
