@@ -3,6 +3,7 @@ import { Animal, Movement, User } from '../types/marisma';
 import { ApiService } from '../services/apiService';
 import { apiClient } from '../services/apiClient';
 import { HinojosLogo } from './HinojosLogo';
+import { DocumentViewerModal, DocumentToView } from './DocumentViewerModal';
 import {
   X,
   Printer,
@@ -18,6 +19,7 @@ import {
   Send,
   ExternalLink,
   Paperclip,
+  Eye,
 } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 
@@ -62,6 +64,7 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
 }) => {
   const isReadOnly = currentUser?.rol !== 'ADMINISTRADOR';
   const [animalEntradas, setAnimalEntradas] = useState<any[]>([]);
+  const [viewingDoc, setViewingDoc] = useState<DocumentToView | null>(null);
 
   useEffect(() => {
     if (isOpen && animal?.id) {
@@ -457,17 +460,23 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                 {todosLosDocumentos.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition"
+                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-emerald-400 transition group shadow-2xs"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-lg">📄</span>
-                      <div>
+                    <div
+                      onClick={() => setViewingDoc(doc)}
+                      className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                      title="Haga clic para examinar el documento en pantalla"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:bg-emerald-100 transition">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-gray-900 truncate max-w-[200px]">
+                          <p className="text-xs font-bold text-gray-900 truncate max-w-[190px] group-hover:text-emerald-800 transition">
                             {doc.nombre}
                           </p>
                           {doc.origenEntrada && (
-                            <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">
+                            <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded shrink-0">
                               Guía Entrada
                             </span>
                           )}
@@ -475,8 +484,8 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                         <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 mt-0.5">
                           <span>{doc.tipo ? doc.tipo.replace('_', ' ') : 'Documento'} · {doc.tamano || 'Archivo'}</span>
                           {doc.fechaSubida && (
-                            <span className="inline-flex items-center gap-1 text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded font-medium border border-blue-100">
-                              <Calendar className="w-3 h-3 text-blue-600" />
+                            <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-100">
+                              <Calendar className="w-3 h-3 text-emerald-600" />
                               <span>{formatDocumentDate(doc.fechaSubida)}</span>
                             </span>
                           )}
@@ -484,13 +493,24 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDownloadDoc(doc.nombre, doc.url, doc.fileData)}
-                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
-                      title="Descargar"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => setViewingDoc(doc)}
+                        className="p-1.5 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg cursor-pointer transition"
+                        title="Examinar documento en pantalla"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDoc(doc.nombre, doc.url, doc.fileData)}
+                        className="p-1.5 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer transition"
+                        title="Descargar archivo al ordenador"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -564,15 +584,23 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
                         </span>
                       )}
                       {item.guia_archivo_url && (
-                        <a
-                          href={apiClient.getAuthenticatedUrl(item.guia_archivo_url)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold text-blue-700 hover:underline flex items-center gap-1"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setViewingDoc({
+                              nombre: item.guia_archivo_nombre || 'Guía de Traslado Sanitario',
+                              url: item.guia_archivo_url,
+                              tipo: 'GUIA_SANITARIA',
+                              fechaSubida: (item.creado_en || '').slice(0, 10),
+                              tamano: 'Adjunto en Entrada',
+                            })
+                          }
+                          className="font-bold text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition"
+                          title="Examinar guía de traslado"
                         >
-                          <Paperclip className="w-3 h-3" />
+                          <Eye className="w-3 h-3 text-emerald-700" />
                           <span>{item.guia_archivo_nombre || 'Guía de Traslado'}</span>
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -675,6 +703,13 @@ export const AnimalDetailModal: React.FC<AnimalDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Visor Oficial de Documentos */}
+      <DocumentViewerModal
+        isOpen={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        document={viewingDoc}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Animal, AnimalType, Owner, Rastra, AnimalDocument, Annotation, User, PresenceStatus } from '../types/marisma';
 import { apiClient } from '../services/apiClient';
+import { DocumentViewerModal, DocumentToView } from './DocumentViewerModal';
 import {
   CAPAS_PELAJES,
   getNextPlazaNumber,
@@ -23,6 +24,7 @@ import {
   CheckCircle,
   Pencil,
   Check,
+  Eye,
 } from 'lucide-react';
 
 interface AnimalModalProps {
@@ -111,6 +113,7 @@ export const AnimalModal: React.FC<AnimalModalProps> = ({
   const [documentos, setDocumentos] = useState<AnimalDocument[]>(initialAnimal?.documentos || []);
   const [newDocTipo, setNewDocTipo] = useState<AnimalDocument['tipo']>('PASAPORTE_DIE');
   const [uploadError, setUploadError] = useState('');
+  const [viewingDoc, setViewingDoc] = useState<DocumentToView | null>(null);
 
   // Annotations State
   const [anotaciones, setAnotaciones] = useState<Annotation[]>(initialAnimal?.anotaciones || []);
@@ -1309,16 +1312,20 @@ export const AnimalModal: React.FC<AnimalModalProps> = ({
                     {documentos.map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 transition shadow-xs"
+                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl hover:border-emerald-400 transition shadow-xs group"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            📄
+                        <div
+                          onClick={() => setViewingDoc(doc)}
+                          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                          title="Haga clic para examinar el documento"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 group-hover:bg-emerald-100 transition">
+                            <FileText className="w-4 h-4" />
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-gray-900">{doc.nombre}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-900 group-hover:text-emerald-800 transition truncate">{doc.nombre}</p>
                             <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                              <span className="font-semibold text-blue-800 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                              <span className="font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                                 {doc.tipo.replace('_', ' ')}
                               </span>
                               <span>· Subido: {doc.fechaSubida}</span>
@@ -1327,19 +1334,27 @@ export const AnimalModal: React.FC<AnimalModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewingDoc(doc)}
+                            className="p-1.5 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                            title="Examinar documento en pantalla"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDownloadDocument(doc)}
-                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
-                            title="Descargar documento"
+                            className="p-1.5 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            title="Descargar documento al ordenador"
                           >
                             <Download className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteDocument(doc.id)}
-                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                             title="Eliminar documento"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1552,6 +1567,13 @@ export const AnimalModal: React.FC<AnimalModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Visor Oficial de Documentos */}
+      <DocumentViewerModal
+        isOpen={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        document={viewingDoc}
+      />
     </div>
   );
 };
