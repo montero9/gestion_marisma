@@ -29,6 +29,7 @@ import {
 import { Animal, Owner, Stallion, Movement, User, Association } from '../types/marisma';
 import { StorageService } from '../services/storageService';
 import { ApiService } from '../services/apiService';
+import { dialogService } from '../services/dialogService';
 import { UsersView } from './UsersView';
 import { SmtpConfigView } from './SmtpConfigView';
 import { BackupView } from './BackupView';
@@ -142,13 +143,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setEditingCampaign(null);
   };
 
-  const handleDeleteCampaignPrompt = (camp: string) => {
+  const handleDeleteCampaignPrompt = async (camp: string) => {
     if (!onDeleteCampaign) return;
     const countAnimals = animals.filter((a) => a.campana === camp).length;
     const countStallions = stallions.filter((s) => s.campana === camp).length;
 
     const confirmMsg =
-      `⚠️ ATENCIÓN: ACCIÓN IRREVERSIBLE\n\n` +
       `¿Está completamente seguro de eliminar la campaña "${camp}"?\n\n` +
       `Al eliminar esta campaña, se BORRARÁN PERMANENTEMENTE de la base de datos:\n` +
       `• ${countAnimals} animales censados/plazas de esta campaña\n` +
@@ -156,7 +156,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       `• Todos los movimientos históricos asociados a estos animales\n\n` +
       `¿Desea proceder con la eliminación definitiva?`;
 
-    if (window.confirm(confirmMsg)) {
+    const confirmed = await dialogService.confirm({
+      title: 'Eliminar Campaña Definitivamente',
+      message: confirmMsg,
+      isDestructive: true,
+      confirmText: 'Eliminar Campaña',
+    });
+
+    if (confirmed) {
       onDeleteCampaign(camp);
     }
   };
@@ -506,12 +513,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
     if (!newCampaignName.trim()) {
-      alert('Por favor introduce el nombre de la nueva campaña (ej. 2026-2027)');
+      dialogService.showWarning('Por favor introduce el nombre de la nueva campaña (ej. 2026-2027)', 'Campaña Requerida');
       return;
     }
     const cleanName = newCampaignName.trim();
     if (campaigns.some((c) => c.toLowerCase() === cleanName.toLowerCase())) {
-      alert(`La campaña "${cleanName}" ya existe en el sistema.`);
+      dialogService.showWarning(`La campaña "${cleanName}" ya existe en el sistema.`, 'Campaña Duplicada');
       return;
     }
 
@@ -605,19 +612,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setFeedbackMsg('Copia de seguridad restaurada correctamente en el servidor.');
         onReloadAllData();
       } catch (err: any) {
-        alert('Error al restaurar la copia de seguridad: ' + err.message);
+        dialogService.showError('Error al restaurar la copia de seguridad: ' + err.message);
       }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  const handleResetDefaults = () => {
-    if (
-      confirm(
-        '¿Desea restablecer todos los datos a la plantilla original de la Marisma de Hinojos (según la captura de Excel)? Los cambios no respaldados se perderán.'
-      )
-    ) {
+  const handleResetDefaults = async () => {
+    const confirmed = await dialogService.confirm({
+      title: 'Restablecer Plantilla Original',
+      message: '¿Desea restablecer todos los datos a la plantilla original de la Marisma de Hinojos (según la captura de Excel)? Los cambios no respaldados se perderán.',
+      isDestructive: true,
+      confirmText: 'Restablecer',
+    });
+
+    if (confirmed) {
       StorageService.resetToFactoryDefaults();
       onReloadAllData();
       setFeedbackMsg('Datos restablecidos con éxito a la hoja original de Hinojos.');

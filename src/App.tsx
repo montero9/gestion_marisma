@@ -19,6 +19,8 @@ import { RestoreAnimalModal } from './components/RestoreAnimalModal';
 import { CampaignMigrationWizard } from './components/CampaignMigrationWizard';
 import { ServerStatusBanner } from './components/ServerStatusBanner';
 import { HinojosLogo } from './components/HinojosLogo';
+import { MunicipalModal } from './components/MunicipalModal';
+import { dialogService } from './services/dialogService';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -189,7 +191,7 @@ export default function App() {
       }
     } catch (e: any) {
       console.warn('Error al registrar campaña en el servidor:', e);
-      alert(`Error al registrar campaña: ${e.message}`);
+      dialogService.showError(`Error al registrar campaña: ${e.message}`);
       throw e;
     }
   };
@@ -200,7 +202,7 @@ export default function App() {
       await loadAllData(false);
     } catch (e: any) {
       console.warn('Error al actualizar campaña:', e);
-      alert(`Error al actualizar campaña: ${e.message}`);
+      dialogService.showError(`Error al actualizar campaña: ${e.message}`);
     }
   };
 
@@ -231,7 +233,7 @@ export default function App() {
       await loadAllData(false);
     } catch (e: any) {
       console.warn('Error al eliminar campaña:', e);
-      alert(`Error al eliminar campaña: ${e.message}`);
+      dialogService.showError(`Error al eliminar campaña: ${e.message}`);
     }
   };
 
@@ -256,7 +258,7 @@ export default function App() {
       await ApiService.deleteAnimal(animal.id);
       setAnimals((prev) => prev.filter((a) => a.id !== animal.id));
     } catch (e: any) {
-      alert(`Error al eliminar en la base de datos municipal: ${e.message}`);
+      dialogService.showError(`Error al eliminar en la base de datos municipal: ${e.message}`);
     }
   };
 
@@ -272,7 +274,7 @@ export default function App() {
         setViewingAnimal(saved);
       }
     } catch (e: any) {
-      alert(`Error al guardar en la base de datos municipal: ${e.message}`);
+      dialogService.showError(`Error al guardar en la base de datos municipal: ${e.message}`);
     }
   };
 
@@ -289,7 +291,7 @@ export default function App() {
       setAnimals(b.animals);
       setMovements(b.movements);
     } catch (e: any) {
-      alert(`Error al registrar movimiento en la base de datos municipal: ${e.message}`);
+      dialogService.showError(`Error al registrar movimiento en la base de datos municipal: ${e.message}`);
     }
   };
 
@@ -461,7 +463,7 @@ export default function App() {
       setOwners(updatedOwners);
     } catch (e: any) {
       console.warn('Error al guardar asociación en backend:', e);
-      alert(`Error al guardar asociación: ${e.message}`);
+      dialogService.showError(`Error al guardar asociación: ${e.message}`);
       try {
         setAssociations(await ApiService.getAssociations());
       } catch {}
@@ -481,7 +483,7 @@ export default function App() {
       setOwners(updatedOwners);
     } catch (e: any) {
       console.warn('Error al eliminar asociación en backend:', e);
-      alert(`Error al eliminar asociación: ${e.message}`);
+      dialogService.showError(`Error al eliminar asociación: ${e.message}`);
       try {
         setAssociations(await ApiService.getAssociations());
       } catch {}
@@ -524,7 +526,7 @@ export default function App() {
       setUsers(updated);
     } catch (e: any) {
       console.error('Error al guardar usuario en backend:', e);
-      alert(`Error al guardar usuario: ${e.message}`);
+      dialogService.showError(`Error al guardar usuario: ${e.message}`);
       try { setUsers(await ApiService.getUsers()); } catch {}
       throw e;
     }
@@ -532,7 +534,7 @@ export default function App() {
 
   const handleDeleteUser = async (userId: string) => {
     if (users.length <= 1) {
-      alert('No es posible eliminar el único usuario del sistema. Debe existir al menos una cuenta registrada.');
+      dialogService.showWarning('No es posible eliminar el único usuario del sistema. Debe existir al menos una cuenta registrada.');
       return;
     }
 
@@ -578,7 +580,7 @@ export default function App() {
       handleLogin(res.user);
     } catch (err: any) {
       console.error('Error al cambiar de cuenta:', err);
-      alert(err.message || 'No se pudo cambiar de cuenta. Verifique sus permisos.');
+      dialogService.showError(err.message || 'No se pudo cambiar de cuenta. Verifique sus permisos.');
     }
   };
 
@@ -958,6 +960,9 @@ export default function App() {
       <div className="print:hidden">
         <Footer currentUser={currentUser} />
       </div>
+
+      {/* Sistema Global de Modales y Diálogos Municipales */}
+      <MunicipalModal />
     </div>
   );
 }

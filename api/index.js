@@ -76801,6 +76801,14 @@ app.get("/api/entradas/:id", async (req, res) => {
 app.post("/api/entradas", async (req, res) => {
   try {
     const remesaData = req.body;
+    const validPersonas = (remesaData.personas || []).filter(
+      (p) => p && typeof p.nombreApellidos === "string" && p.nombreApellidos.trim().length > 0
+    );
+    if (validPersonas.length === 0) {
+      return res.status(400).json({
+        error: "No es posible registrar una solicitud de entrada sin ning\xFAn titular o persona autorizada."
+      });
+    }
     if (!remesaData.id) {
       remesaData.id = `REM-${Date.now()}`;
     }

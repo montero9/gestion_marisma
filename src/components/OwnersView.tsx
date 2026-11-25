@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Owner, Animal, Association, User } from '../types/marisma';
+import { dialogService } from '../services/dialogService';
 import {
   Users,
   Search,
@@ -1544,9 +1545,18 @@ const AssociationsModal: React.FC<AssociationsModalProps> = ({
 
     if (associatedCount === 0) {
       // Si no tiene socios, confirmación simple estándar
-      if (window.confirm(`¿Estás seguro de eliminar la asociación "${asoc.nombre}"?`)) {
-        executeDelete(asoc.id);
-      }
+      dialogService
+        .confirm({
+          title: 'Eliminar Asociación',
+          message: `¿Estás seguro de eliminar la asociación "${asoc.nombre}"?`,
+          isDestructive: true,
+          confirmText: 'Eliminar',
+        })
+        .then((confirmed) => {
+          if (confirmed) {
+            executeDelete(asoc.id);
+          }
+        });
     } else {
       // Si tiene socios, abrir el diálogo interactivo de reasignación
       setAssociationToDelete(asoc);

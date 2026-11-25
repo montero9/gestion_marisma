@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EntradaRemesa, Animal, Owner, User } from '../types/marisma';
 import { ApiService } from '../services/apiService';
+import { dialogService } from '../services/dialogService';
 import { EntradaEditorModal } from './EntradaEditorModal';
 import { EntradaConsultaPersonaModal } from './EntradaConsultaPersonaModal';
 import { EnviandoEmailModal } from './EnviandoEmailModal';
@@ -133,14 +134,20 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
   };
 
   const handleDelete = async (remesa: EntradaRemesa) => {
-    if (!window.confirm(`¿Está seguro de eliminar la remesa "${remesa.tituloOficial}"?`)) {
+    const confirmed = await dialogService.confirm({
+      title: 'Eliminar Solicitud',
+      message: `¿Está seguro de eliminar la remesa "${remesa.tituloOficial}"?`,
+      isDestructive: true,
+      confirmText: 'Eliminar',
+    });
+    if (!confirmed) {
       return;
     }
     try {
       await ApiService.deleteEntrada(remesa.id);
       setRemesas((prev) => prev.filter((r) => r.id !== remesa.id));
     } catch (err: any) {
-      alert('Error eliminando la remesa: ' + err.message);
+      dialogService.showError('Error eliminando la remesa: ' + err.message);
     }
   };
 
@@ -150,7 +157,7 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
       const filename = `${(remesa.tituloOficial || 'Permisos_Marisma').replace(/[^\w.-]/g, '_')}.ods`;
       await ApiService.downloadEntradaOds(remesa.id, filename);
     } catch (err: any) {
-      alert('Error al descargar el archivo ODS: ' + err.message);
+      dialogService.showError('Error al descargar el archivo ODS: ' + err.message);
     } finally {
       setProcessingId(null);
     }
@@ -187,11 +194,12 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
   };
 
   const handleMarkAsSent = async (remesa: EntradaRemesa) => {
-    if (
-      !confirm(
-        `¿Desea marcar la remesa "${remesa.tituloOficial}" como ENVIADA manualmente?\n\nEsta acción cambiará su estado oficial a ENVIADO sin enviar correo (para comunicaciones telefónicas o presenciales).`
-      )
-    ) {
+    const confirmed = await dialogService.confirm({
+      title: 'Marcar como Enviada',
+      message: `¿Desea marcar la remesa "${remesa.tituloOficial}" como ENVIADA manualmente?\n\nEsta acción cambiará su estado oficial a ENVIADO sin enviar correo (para comunicaciones telefónicas o presenciales).`,
+      confirmText: 'Marcar como Enviada',
+    });
+    if (!confirmed) {
       return;
     }
     setProcessingId(remesa.id);
@@ -205,9 +213,9 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
       };
       await ApiService.saveEntrada(updated);
       handleSavedRemesa(updated);
-      alert('La remesa se ha marcado como ENVIADA con éxito.');
+      dialogService.showSuccess('La remesa se ha marcado como ENVIADA con éxito.');
     } catch (err: any) {
-      alert('Error al marcar la remesa como enviada: ' + err.message);
+      dialogService.showError('Error al marcar la remesa como enviada: ' + err.message);
     } finally {
       setProcessingId(null);
     }

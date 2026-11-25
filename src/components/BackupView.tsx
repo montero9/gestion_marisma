@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '../services/apiService';
 import { StorageService } from '../services/storageService';
+import { dialogService } from '../services/dialogService';
 
 interface BackupViewProps {
   onReloadAllData: () => void;
@@ -108,7 +109,7 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.zip')) {
-      alert('El archivo debe ser un archivo comprimido .ZIP');
+      dialogService.showWarning('El archivo debe ser un archivo comprimido .ZIP', 'Formato Inválido');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -168,21 +169,24 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
   };
 
   // Restaurar JSON secundario
-  const handleRestoreJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRestoreJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.json')) {
-      alert('El archivo debe ser un archivo de texto en formato .JSON');
+      dialogService.showWarning('El archivo debe ser un archivo de texto en formato .JSON', 'Formato Inválido');
       if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
       return;
     }
 
-    if (
-      !confirm(
-        '¿Está seguro de restaurar desde este archivo JSON?\n\nLos registros actuales de la base de datos municipal serán reemplazados por los datos contenidos en el archivo.'
-      )
-    ) {
+    const confirmed = await dialogService.confirm({
+      title: 'Restaurar Copia de Seguridad',
+      message: '¿Está seguro de restaurar desde este archivo JSON?\n\nLos registros actuales de la base de datos municipal serán reemplazados por los datos contenidos en el archivo.',
+      isDestructive: true,
+      confirmText: 'Restaurar Datos',
+    });
+
+    if (!confirmed) {
       if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
       return;
     }
@@ -211,12 +215,15 @@ export const BackupView: React.FC<BackupViewProps> = ({ onReloadAllData, onNotif
   };
 
   // Restablecer a datos de fábrica
-  const handleResetDefaults = () => {
-    if (
-      confirm(
-        '¿Desea restablecer todos los datos a la plantilla original de la Marisma de Hinojos (según la captura de Excel)? Los cambios no respaldados se perderán.'
-      )
-    ) {
+  const handleResetDefaults = async () => {
+    const confirmed = await dialogService.confirm({
+      title: 'Restablecer Plantilla Original',
+      message: '¿Desea restablecer todos los datos a la plantilla original de la Marisma de Hinojos (según la captura de Excel)? Los cambios no respaldados se perderán.',
+      isDestructive: true,
+      confirmText: 'Restablecer',
+    });
+
+    if (confirmed) {
       StorageService.resetToFactoryDefaults();
       onReloadAllData();
       setFeedbackMsg({ text: 'Datos locales restablecidos con éxito a la hoja original de Hinojos.', type: 'success' });

@@ -9,6 +9,7 @@ import {
 } from '../types/marisma';
 import { ApiService } from '../services/apiService';
 import { apiClient } from '../services/apiClient';
+import { dialogService } from '../services/dialogService';
 import { EnviandoEmailModal } from './EnviandoEmailModal';
 import {
   X,
@@ -296,8 +297,9 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       for (const p of dayPersons) {
         const norm = p.nombreApellidos.trim().toUpperCase();
         if (seen.has(norm)) {
-          alert(
-            `ADVERTENCIA: La persona "${p.nombreApellidos}" figura registrada más de una vez el día ${d.label}.\n\nNo se permite autorizar a una misma persona varias veces en el mismo día. Por favor, elimine la entrada duplicada antes de continuar.`
+          dialogService.showWarning(
+            `La persona "${p.nombreApellidos}" figura registrada más de una vez el día ${d.label}.\n\nNo se permite autorizar a una misma persona varias veces en el mismo día. Por favor, elimine la entrada duplicada antes de continuar.`,
+            'Persona Duplicada en el Día'
           );
           return false;
         }
@@ -396,8 +398,9 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
         p.nombreApellidos.trim().toUpperCase() === owner.nombreCompleto.trim().toUpperCase()
     );
     if (isDup) {
-      alert(
-        `La persona "${owner.nombreCompleto}" ya figura registrada en este mismo día (${currentDay?.label}).\n\nUna persona no puede registrarse dos veces el mismo día.`
+      dialogService.showWarning(
+        `La persona "${owner.nombreCompleto}" ya figura registrada en este mismo día (${currentDay?.label}).\n\nUna persona no puede registrarse dos veces el mismo día.`,
+        'Persona Ya Asignada'
       );
       return;
     }
@@ -418,8 +421,9 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
         p.nombreApellidos.trim().toUpperCase() === owner.nombreCompleto.trim().toUpperCase()
     );
     if (isDup) {
-      alert(
-        `La persona "${owner.nombreCompleto}" ya figura registrada en este mismo día (${currentDay?.label}).\n\nUna persona no puede registrarse dos veces el mismo día.`
+      dialogService.showWarning(
+        `La persona "${owner.nombreCompleto}" ya figura registrada en este mismo día (${currentDay?.label}).\n\nUna persona no puede registrarse dos veces el mismo día.`,
+        'Persona Ya Asignada'
       );
       return;
     }
@@ -575,7 +579,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
         onAnimalsUpdated?.();
       }
     } catch (err: any) {
-      alert('Error al subir la guía de traslado: ' + err.message);
+      dialogService.showError('Error al subir la guía de traslado: ' + err.message);
     } finally {
       setUploadingAnimalId(null);
     }
@@ -583,6 +587,18 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
 
   // Guardar Borrador
   const handleSave = async (silent = false) => {
+    // 1. Validar que exista al menos un titular o persona autorizada con nombre
+    const validPersonas = (formData.personas || []).filter(
+      (p) => p && typeof p.nombreApellidos === 'string' && p.nombreApellidos.trim().length > 0
+    );
+    if (validPersonas.length === 0) {
+      await dialogService.showWarning(
+        'No es posible guardar o registrar una solicitud de entrada sin ningún titular.\n\nPor favor, añada al menos una persona autorizada o ganadero antes de guardar.',
+        'Titular Obligatorio'
+      );
+      return null;
+    }
+
     if (!validateDuplicates()) return null;
     setIsSaving(true);
     try {
@@ -590,11 +606,14 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       setFormData(saved);
       onSaved(saved);
       if (!silent) {
-        alert('Remesa guardada correctamente.');
+        await dialogService.showSuccess(
+          'La solicitud de entrada se ha guardado correctamente como borrador.',
+          'Remesa Guardada'
+        );
       }
       return saved;
     } catch (err: any) {
-      alert('Error guardando la remesa: ' + err.message);
+      dialogService.showError('Error guardando la remesa: ' + err.message);
       return null;
     } finally {
       setIsSaving(false);
@@ -609,18 +628,25 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       const cleanFileName = `${(saved.tituloOficial || 'Permisos_Marisma').replace(/[^\w.-]/g, '_')}.ods`;
       await ApiService.downloadEntradaOds(saved.id, cleanFileName);
     } catch (err: any) {
-      alert('Error al descargar el archivo ODS: ' + err.message);
+      dialogService.showError('Error al descargar el archivo ODS: ' + err.message);
     }
   };
 
   // Enviar por Correo Electrónico
   const handleSendEmail = async () => {
-    if (!validateDuplicates()) return;
-
-    if ((formData.personas || []).length === 0) {
-      alert('Debe añadir al menos una persona autorizada antes de enviar el correo.');
+    // 1. Validar titulares
+    const validPersonas = (formData.personas || []).filter(
+      (p) => p && typeof p.nombreApellidos === 'string' && p.nombreApellidos.trim().length > 0
+    );
+    if (validPersonas.length === 0) {
+      await dialogService.showWarning(
+        'Debe añadir al menos una persona autorizada o titular antes de enviar el correo a Doñana.',
+        'Titular Obligatorio'
+      );
       return;
     }
+
+    if (!validateDuplicates()) return;
 
     setSendingModalData({
       isOpen: true,
@@ -657,12 +683,25 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
 
   // Marcar directamente como ENVIADO (manual / presencial)
   const handleMarkManualSent = async () => {
+    // 1. Validar titulares
+    const validPersonas = (formData.personas || []).filter(
+      (p) => p && typeof p.nombreApellidos === 'string' && p.nombreApellidos.trim().length > 0
+    );
+    if (validPersonas.length === 0) {
+      await dialogService.showWarning(
+        'No es posible formalizar una solicitud de entrada sin ningún titular.',
+        'Titular Obligatorio'
+      );
+      return;
+    }
+
     if (!validateDuplicates()) return;
-    if (
-      !confirm(
-        '¿Desea marcar esta solicitud directamente como ENVIADA?\n\nEsta opción formaliza la solicitud sin enviar correo electrónico (útil si la comunicación se ha realizado telefónica o presencialmente).'
-      )
-    ) {
+    const confirmed = await dialogService.confirm({
+      title: 'Formalizar Entrada Manualmente',
+      message: '¿Desea marcar esta solicitud directamente como ENVIADA?\n\nEsta opción formaliza la solicitud sin enviar correo electrónico (útil si la comunicación se ha realizado telefónica o presencialmente).',
+      confirmText: 'Marcar como Enviado',
+    });
+    if (!confirmed) {
       return;
     }
     setIsSaving(true);
@@ -679,7 +718,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       onSaved(saved);
       onClose();
     } catch (err: any) {
-      alert('Error al marcar la remesa como enviada: ' + err.message);
+      dialogService.showError('Error al marcar la remesa como enviada: ' + err.message);
     } finally {
       setIsSaving(false);
     }

@@ -1292,6 +1292,17 @@ app.get('/api/entradas/:id', async (req: AuthenticatedRequest, res) => {
 app.post('/api/entradas', async (req: AuthenticatedRequest, res) => {
   try {
     const remesaData: EntradaRemesa = req.body;
+    
+    // Validación de seguridad municipal: No permitir entradas sin titulares
+    const validPersonas = (remesaData.personas || []).filter(
+      (p: any) => p && typeof p.nombreApellidos === 'string' && p.nombreApellidos.trim().length > 0
+    );
+    if (validPersonas.length === 0) {
+      return res.status(400).json({
+        error: 'No es posible registrar una solicitud de entrada sin ningún titular o persona autorizada.',
+      });
+    }
+
     if (!remesaData.id) {
       remesaData.id = `REM-${Date.now()}`;
     }

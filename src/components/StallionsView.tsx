@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
+import { dialogService } from '../services/dialogService';
 
 interface StallionsViewProps {
   stallions: Stallion[];
@@ -339,8 +340,14 @@ export const StallionsView: React.FC<StallionsViewProps> = ({
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`¿Eliminar al semental ${st.nombre}?`)) {
+                      onClick={async () => {
+                        const confirmed = await dialogService.confirm({
+                          title: 'Eliminar Semental',
+                          message: `¿Eliminar al semental "${st.nombre}"?`,
+                          isDestructive: true,
+                          confirmText: 'Eliminar',
+                        });
+                        if (confirmed) {
                           onDeleteStallion(st.id);
                         }
                       }}
