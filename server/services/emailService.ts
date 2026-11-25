@@ -215,9 +215,32 @@ export async function sendEntradaEmail(params: {
       ? remesa.fechas[0].split('-')[0]
       : new Date().getFullYear().toString();
 
-  const diasConAno = remesa.diasTexto
-    ? `${remesa.diasTexto} ${year}`
-    : `${remesa.tituloOficial || 'Permisos'} ${year}`;
+  let diasFormateados = (remesa.diasTexto || remesa.tituloOficial || '').trim();
+  if (diasFormateados && !diasFormateados.includes(year)) {
+    diasFormateados = `${diasFormateados} de ${year}`;
+  }
+  // Normalizar días y meses a minúsculas
+  diasFormateados = diasFormateados
+    .replace(/\bMiércoles\b/g, 'miércoles')
+    .replace(/\bMiercoles\b/g, 'miércoles')
+    .replace(/\bJueves\b/g, 'jueves')
+    .replace(/\bSábado\b/g, 'sábado')
+    .replace(/\bSabado\b/g, 'sábado')
+    .replace(/\bDomingo\b/g, 'domingo')
+    .replace(/\bNoviembre\b/g, 'noviembre')
+    .replace(/\bDiciembre\b/g, 'diciembre')
+    .replace(/\bEnero\b/g, 'enero')
+    .replace(/\bFebrero\b/g, 'febrero')
+    .replace(/\bMarzo\b/g, 'marzo')
+    .replace(/\bAbril\b/g, 'abril')
+    .replace(/\bMayo\b/g, 'mayo')
+    .replace(/\bJunio\b/g, 'junio')
+    .replace(/\bJulio\b/g, 'julio')
+    .replace(/\bAgosto\b/g, 'agosto')
+    .replace(/\bSeptiembre\b/g, 'septiembre')
+    .replace(/\bOctubre\b/g, 'octubre');
+
+  const diasConAno = diasFormateados || `${remesa.tituloOficial || 'Permisos'} ${year}`;
 
   // Preparar lista de archivos adjuntos (hoja ODS principal + guías sanitarias y documentos de animales)
   const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
@@ -294,15 +317,11 @@ export async function sendEntradaEmail(params: {
 
   const subject = `Entradas Marisma- ${diasConAno}`;
 
-  const textBody = `Buenas tardes.
+  const textBody = `Buenas tardes:
 
-Adjunto a este email le hago llegar las entradas a la marisma de Hinojos para los días ${remesa.diasTexto || remesa.tituloOficial || ''} de ${year}${
-  attachedGuideNames.length > 0
-    ? ` junto con las ${attachedGuideNames.length} guías sanitarias y documentos oficiales correspondientes (${attachedGuideNames.join(', ')})`
-    : ''
-}.
+Adjunto a este correo le remito las entradas para acceder a la Marisma de Hinojos correspondientes a los días ${diasFormateados}.
 
-Saludos.
+Un saludo.
 `;
 
   const mailOptions: SendMailOptions = {
