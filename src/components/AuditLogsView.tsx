@@ -227,11 +227,28 @@ export const AuditLogsView: React.FC = () => {
     setCurrentPage(1);
   }, [filterCategory, searchTerm]);
 
-  // Generar y descargar informe de auditoría en formato PDF oficial
+  // Generar y descargar informe de auditoría en formato PDF oficial (sin abrir pestaña nueva)
   const handleExportPdf = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Por favor, permita las ventanas emergentes para generar el informe PDF de auditoría.');
+    const existingIframe = document.getElementById('audit-pdf-print-iframe');
+    if (existingIframe) {
+      existingIframe.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'audit-pdf-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const printWindow = iframe.contentWindow;
+    const printDoc = printWindow?.document;
+    if (!printWindow || !printDoc) {
+      iframe.remove();
       return;
     }
 
@@ -308,21 +325,22 @@ export const AuditLogsView: React.FC = () => {
           <div>Documento emitido por el Sistema de Gestión Municipal de la Marisma de Hinojos.</div>
           <div>Página 1 de 1</div>
         </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-            }, 300);
-          };
-        </script>
       </body>
       </html>
     `;
 
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    printDoc.open();
+    printDoc.write(htmlContent);
+    printDoc.close();
+
+    printWindow.onafterprint = () => {
+      iframe.remove();
+    };
+
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
   };
 
   return (
