@@ -73,8 +73,16 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
 
   // Acciones en curso
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [sendingModalData, setSendingModalData] = useState<{ isOpen: boolean; titulo: string }>({
+  const [sendingModalData, setSendingModalData] = useState<{
+    isOpen: boolean;
+    status: 'sending' | 'success' | 'error';
+    titulo: string;
+    recipients?: string[];
+    bcc?: string[];
+    errorMessage?: string;
+  }>({
     isOpen: false,
+    status: 'sending',
     titulo: '',
   });
 
@@ -149,20 +157,30 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
   };
 
   const handleDirectSendEmail = async (remesa: EntradaRemesa) => {
-    const confirmMsg = `¿Desea enviar la remesa "${remesa.tituloOficial}" por correo electrónico al Espacio Natural de Doñana?`;
-    if (!window.confirm(confirmMsg)) return;
-
     setProcessingId(remesa.id);
-    setSendingModalData({ isOpen: true, titulo: remesa.tituloOficial });
+    setSendingModalData({
+      isOpen: true,
+      status: 'sending',
+      titulo: remesa.tituloOficial,
+    });
     try {
       const res = await ApiService.enviarEntradaEmail(remesa.id);
-      setSendingModalData({ isOpen: false, titulo: '' });
-      alert(`¡Correo enviado con éxito a Doñana!\n\nDestinatarios: ${res.sendResult?.recipients?.join(', ')}`);
-      loadRemesas();
+      setSendingModalData({
+        isOpen: true,
+        status: 'success',
+        titulo: remesa.tituloOficial,
+        recipients: res.sendResult?.recipients || [],
+        bcc: res.sendResult?.bcc || [],
+      });
+      loadRemesas(true);
     } catch (err: any) {
-      setSendingModalData({ isOpen: false, titulo: '' });
-      alert('Error al enviar el correo a Doñana: ' + err.message);
-      loadRemesas();
+      setSendingModalData({
+        isOpen: true,
+        status: 'error',
+        titulo: remesa.tituloOficial,
+        errorMessage: err.message || 'Error al enviar el correo a Doñana',
+      });
+      loadRemesas(true);
     } finally {
       setProcessingId(null);
     }
@@ -669,10 +687,15 @@ export const EntradasView: React.FC<EntradasViewProps> = ({
         onVerEntrada={(remesa) => handleView(remesa)}
       />
 
-      {/* Modal bloqueante de envío de entradas con cuenta atrás */}
+      {/* Modal oficial de envío de entradas con cuenta atrás y confirmación */}
       <EnviandoEmailModal
         isOpen={sendingModalData.isOpen}
+        status={sendingModalData.status}
         tituloOficial={sendingModalData.titulo}
+        recipients={sendingModalData.recipients}
+        bcc={sendingModalData.bcc}
+        errorMessage={sendingModalData.errorMessage}
+        onClose={() => setSendingModalData({ isOpen: false, status: 'sending', titulo: '' })}
       />
     </div>
   );

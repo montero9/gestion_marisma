@@ -75653,7 +75653,14 @@ async function sendEntradaEmail(params) {
     }
   }
   const subject = `Entradas Marisma- ${diasConAno}`;
-  const textBody = `Buenas tardes:
+  const hourStr = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    hour: "numeric",
+    hour12: false
+  }).format(/* @__PURE__ */ new Date());
+  const hour = parseInt(hourStr, 10);
+  const saludo = hour >= 6 && hour < 14 ? "Buenos d\xEDas:" : hour >= 14 && hour < 21 ? "Buenas tardes:" : "Buenas noches:";
+  const textBody = `${saludo}
 
 Adjunto a este correo le remito las entradas para acceder a la Marisma de Hinojos correspondientes a los d\xEDas ${diasFormateados}.
 

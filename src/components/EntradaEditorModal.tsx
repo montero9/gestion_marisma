@@ -130,7 +130,20 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [sendingModalData, setSendingModalData] = useState<{
+    isOpen: boolean;
+    status: 'sending' | 'success' | 'error';
+    titulo: string;
+    recipients?: string[];
+    bcc?: string[];
+    errorMessage?: string;
+    savedRemesa?: EntradaRemesa;
+  }>({
+    isOpen: false,
+    status: 'sending',
+    titulo: '',
+  });
+  const isSending = sendingModalData.isOpen;
   const [uploadingAnimalId, setUploadingAnimalId] = useState<string | null>(null);
 
   // Buscador de equinos
@@ -609,23 +622,36 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       return;
     }
 
-    const confirmMsg = `¿Está seguro de emitir y enviar esta remesa al Espacio Natural de Doñana?\n\n- ${formData.tituloOficial}\n- Total autorizaciones: ${(formData.personas || []).length}\n- Se generará el archivo .ODS oficial y se enviará por correo electrónico con copia oculta (BCC).`;
-    if (!window.confirm(confirmMsg)) return;
+    setSendingModalData({
+      isOpen: true,
+      status: 'sending',
+      titulo: formData.tituloOficial,
+    });
 
-    setIsSending(true);
     try {
       const saved = await handleSave(true);
-      if (!saved) return;
+      if (!saved) {
+        setSendingModalData({ isOpen: false, status: 'sending', titulo: '' });
+        return;
+      }
 
       const res = await ApiService.enviarEntradaEmail(saved.id);
       setFormData(res.remesa);
-      onSaved(res.remesa);
-      alert(`¡Correo enviado con éxito a Doñana!\n\nDestinatarios: ${res.sendResult?.recipients?.join(', ')}\nCopia oculta: ${res.sendResult?.bcc?.join(', ')}`);
-      onClose();
+      setSendingModalData({
+        isOpen: true,
+        status: 'success',
+        titulo: res.remesa.tituloOficial,
+        recipients: res.sendResult?.recipients || [],
+        bcc: res.sendResult?.bcc || [],
+        savedRemesa: res.remesa,
+      });
     } catch (err: any) {
-      alert('Error al enviar el correo a Doñana: ' + err.message);
-    } finally {
-      setIsSending(false);
+      setSendingModalData({
+        isOpen: true,
+        status: 'error',
+        titulo: formData.tituloOficial,
+        errorMessage: err.message || 'Error al enviar el correo a Doñana',
+      });
     }
   };
 
@@ -651,7 +677,6 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
       const saved = await ApiService.saveEntrada(updated);
       setFormData(saved);
       onSaved(saved);
-      alert('La remesa se ha marcado como ENVIADA con éxito.');
       onClose();
     } catch (err: any) {
       alert('Error al marcar la remesa como enviada: ' + err.message);
@@ -1733,10 +1758,10 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
               <button
                 type="button"
                 onClick={handleSendEmail}
-                disabled={isSaving || isSending || formData.estado === 'ENVIANDO'}
+                disabled={isSaving || sendingModalData.isOpen || formData.estado === 'ENVIANDO'}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
               >
-                {isSending || formData.estado === 'ENVIANDO' ? (
+                {sendingModalData.isOpen || formData.estado === 'ENVIANDO' ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Enviando a Doñana...</span>
@@ -1753,10 +1778,23 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
         </div>
       </div>
 
-      {/* Modal bloqueante de envío de entradas */}
+      {/* Modal oficial de envío de entradas */}
       <EnviandoEmailModal
-        isOpen={isSending}
-        tituloOficial={formData.tituloOficial}
+        isOpen={sendingModalData.isOpen}
+        status={sendingModalData.status}
+        tituloOficial={sendingModalData.titulo}
+        recipients={sendingModalData.recipients}
+        bcc={sendingModalData.bcc}
+        errorMessage={sendingModalData.errorMessage}
+        onClose={() => {
+          const wasSuccess = sendingModalData.status === 'success';
+          const updated = sendingModalData.savedRemesa;
+          setSendingModalData({ isOpen: false, status: 'sending', titulo: '' });
+          if (wasSuccess && updated) {
+            onSaved(updated);
+            onClose();
+          }
+        }}
       />
     </div>
   );

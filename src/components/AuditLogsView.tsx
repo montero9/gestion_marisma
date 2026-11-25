@@ -8,18 +8,16 @@ import {
   Calendar,
   User,
   Filter,
-  Download,
+  FileDown,
   ChevronLeft,
   ChevronRight,
-  Info,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Clock,
-  FileSpreadsheet,
-  FileText,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from 'lucide-react';
 
 export const AuditLogsView: React.FC = () => {
@@ -80,7 +78,7 @@ export const AuditLogsView: React.FC = () => {
       return { label: 'Copia / Respaldo', bg: 'bg-purple-100 text-purple-800 border-purple-300' };
     }
     if (act.includes('ODS')) {
-      return { label: 'Exportación ODS', bg: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
+      return { label: 'Descarga ODS', bg: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
     }
     return { label: act.replace(/_/g, ' '), bg: 'bg-gray-100 text-gray-800 border-gray-200' };
   };
@@ -103,31 +101,88 @@ export const AuditLogsView: React.FC = () => {
     }
   };
 
-  // Parsear y resumir detalles JSON en texto legible
-  const parseDetailsSummary = (detallesJson?: string): { summary: string; full: Record<string, any> | null } => {
-    if (!detallesJson) return { summary: 'Sin detalles adicionales', full: null };
+  // Obtener nombre amigable y entendible del elemento afectado (SIN IDs técnicos como owner-1795...)
+  const getFriendlyElement = (log: AuditLog): { principal: string; secundario?: string } => {
+    let details: Record<string, any> = {};
     try {
-      const obj = JSON.parse(detallesJson);
+      if (log.detallesJson) details = JSON.parse(log.detallesJson);
+    } catch {}
+
+    const ent = (log.entidad || '').toUpperCase();
+    const act = (log.accion || '').toUpperCase();
+
+    if (ent.includes('GANADERO') || ent.includes('OWNER') || act.includes('GANADERO')) {
+      return {
+        principal: 'Ganadero',
+        secundario: details.nombre || details.titular || 'Ficha municipal de ganadero',
+      };
+    }
+
+    if (ent.includes('ENTRADA') || act.includes('ENTRADA') || act.includes('DONANA')) {
+      return {
+        principal: 'Permiso de Entrada',
+        secundario: details.titulo || 'Solicitud de acceso a Doñana',
+      };
+    }
+
+    if (ent.includes('ANIMAL') || act.includes('ANIMAL')) {
+      const plaza = details.plaza || (log.entidadId && !log.entidadId.includes('-') ? log.entidadId : null);
+      return {
+        principal: plaza ? `Animal (Plaza ${plaza})` : 'Animal Censado',
+        secundario: details.titular ? `Ganadero: ${details.titular}` : details.nombre || undefined,
+      };
+    }
+
+    if (ent.includes('USUARIO') || act.includes('USUARIO') || act.includes('LOGIN') || act.includes('SESION')) {
+      return {
+        principal: 'Usuario del Sistema',
+        secundario: details.username ? `@${details.username}` : details.aUsuario ? `@${details.aUsuario}` : undefined,
+      };
+    }
+
+    if (ent.includes('SISTEMA') || act.includes('BACKUP') || act.includes('COPIA')) {
+      return {
+        principal: 'Copia de Seguridad',
+        secundario: details.fechaCopia ? `Fecha copia: ${details.fechaCopia}` : 'Base de datos municipal',
+      };
+    }
+
+    if (ent.includes('CAMPANA') || act.includes('CAMPANA')) {
+      return {
+        principal: 'Campaña Anual',
+        secundario: details.nombre ? `Campaña ${details.nombre}` : undefined,
+      };
+    }
+
+    return {
+      principal: log.entidad ? log.entidad.charAt(0).toUpperCase() + log.entidad.slice(1).toLowerCase() : 'Registro',
+    };
+  };
+
+  // Parsear y resumir detalles en texto entendible para usuarios sin conocimientos
+  const parseDetailsSummary = (log: AuditLog): { summary: string; full: Record<string, any> | null } => {
+    if (!log.detallesJson) return { summary: 'Operación registrada correctamente', full: null };
+    try {
+      const obj = JSON.parse(log.detallesJson);
       const parts: string[] = [];
 
       if (obj.titulo) parts.push(`"${obj.titulo}"`);
       if (obj.nombre) parts.push(`Nombre: ${obj.nombre}`);
-      if (obj.titular) parts.push(`Titular: ${obj.titular}`);
+      if (obj.titular) parts.push(`Ganadero: ${obj.titular}`);
       if (obj.plaza) parts.push(`Plaza: ${obj.plaza}`);
-      if (obj.crotal) parts.push(`Crotal/Chip: ${obj.crotal}`);
+      if (obj.crotal) parts.push(`Crotal: ${obj.crotal}`);
       if (obj.destinatarios) {
         const dest = Array.isArray(obj.destinatarios) ? obj.destinatarios.join(', ') : obj.destinatarios;
-        parts.push(`Dest: ${dest}`);
+        parts.push(`Enviado a: ${dest}`);
       }
       if (obj.motivo) parts.push(`Motivo: ${obj.motivo}`);
       if (obj.username) parts.push(`Usuario: @${obj.username}`);
-      if (obj.rol) parts.push(`Rol: ${obj.rol}`);
       if (obj.aUsuario) parts.push(`Cambio a: @${obj.aUsuario}`);
 
-      const summary = parts.length > 0 ? parts.join(' · ') : JSON.stringify(obj).replace(/[{}\"]/g, '').slice(0, 80);
+      const summary = parts.length > 0 ? parts.join(' · ') : 'Información registrada en el evento';
       return { summary, full: obj };
     } catch {
-      return { summary: detallesJson.slice(0, 80), full: null };
+      return { summary: 'Detalles registrados', full: null };
     }
   };
 
@@ -151,11 +206,9 @@ export const AuditLogsView: React.FC = () => {
         const matchesUser = (log.usuarioNombre || '').toLowerCase().includes(q);
         const matchesAccion = (log.accion || '').toLowerCase().includes(q);
         const matchesEntidad = (log.entidad || '').toLowerCase().includes(q);
-        const matchesId = (log.entidadId || '').toLowerCase().includes(q);
         const matchesDetalles = (log.detallesJson || '').toLowerCase().includes(q);
-        const matchesIp = (log.ip || '').toLowerCase().includes(q);
 
-        if (!matchesUser && !matchesAccion && !matchesEntidad && !matchesId && !matchesDetalles && !matchesIp) {
+        if (!matchesUser && !matchesAccion && !matchesEntidad && !matchesDetalles) {
           return false;
         }
       }
@@ -174,15 +227,102 @@ export const AuditLogsView: React.FC = () => {
     setCurrentPage(1);
   }, [filterCategory, searchTerm]);
 
-  // Exportar logs a JSON
-  const handleExportJson = () => {
-    const blob = new Blob([JSON.stringify(filteredLogs, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `registro_auditoria_hinojos_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Generar y descargar informe de auditoría en formato PDF oficial
+  const handleExportPdf = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor, permita las ventanas emergentes para generar el informe PDF de auditoría.');
+      return;
+    }
+
+    const rowsHtml = filteredLogs
+      .map((log) => {
+        const badge = getActionBadge(log.accion);
+        const elem = getFriendlyElement(log);
+        const { summary } = parseDetailsSummary(log);
+        return `
+          <tr>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; white-space: nowrap; font-family: monospace;">${formatDateTime(log.fecha)}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; font-weight: bold;">${log.usuarioNombre || 'Sistema'}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px;">
+              <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
+                ${badge.label}
+              </span>
+            </td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px;">
+              <div style="font-weight: bold; color: #111827;">${elem.principal}</div>
+              ${elem.secundario ? `<div style="color: #6b7280; font-size: 10px;">${elem.secundario}</div>` : ''}
+            </td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; color: #374151;">${summary}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>Informe Oficial de Auditoría - Marisma de Hinojos</title>
+        <style>
+          @page { size: A4 landscape; margin: 15mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111827; margin: 0; padding: 20px; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #047857; padding-bottom: 12px; margin-bottom: 15px; }
+          .title-area h1 { margin: 0; font-size: 18px; color: #047857; text-transform: uppercase; }
+          .title-area p { margin: 3px 0 0; font-size: 12px; color: #4b5563; }
+          .meta-area { text-align: right; font-size: 11px; color: #6b7280; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th { background: #f3f4f6; color: #374151; text-align: left; padding: 8px 10px; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #d1d5db; }
+          .footer { margin-top: 25px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #9ca3af; display: flex; justify-content: space-between; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title-area">
+            <h1>Ayuntamiento de Hinojos · Control Ganadero</h1>
+            <p>Informe Oficial de Registro de Actividad y Auditoría · Marisma de Hinojos (Doñana)</p>
+          </div>
+          <div class="meta-area">
+            <div><strong>Fecha de emisión:</strong> ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</div>
+            <div><strong>Total eventos registrados:</strong> ${filteredLogs.length}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 140px;">Fecha y Hora</th>
+              <th style="width: 120px;">Responsable</th>
+              <th style="width: 130px;">Acción</th>
+              <th style="width: 180px;">Elemento</th>
+              <th>Descripción y Detalles</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div>Documento emitido por el Sistema de Gestión Municipal de la Marisma de Hinojos.</div>
+          <div>Página 1 de 1</div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   return (
@@ -196,23 +336,23 @@ export const AuditLogsView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">
-                Registro Oficial de Auditoría y Trazabilidad
+                Registro de Actividad y Auditoría
               </h1>
               <p className="text-xs text-gray-500">
-                Historial inmutable de accesos, modificaciones y permisos conforme al Esquema Nacional de Seguridad (ENS)
+                Historial cronológico de accesos, solicitudes de entrada a Doñana y modificaciones censales
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto">
             <button
-              onClick={handleExportJson}
+              onClick={handleExportPdf}
               disabled={filteredLogs.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition shadow-2xs disabled:opacity-50 cursor-pointer"
-              title="Descargar informe completo de auditoría en formato JSON"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg transition shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="Descargar informe oficial en PDF"
             >
-              <Download className="w-3.5 h-3.5 text-gray-600" />
-              <span>Exportar Informe</span>
+              <FileDown className="w-3.5 h-3.5 text-white" />
+              <span>Exportar Informe PDF</span>
             </button>
 
             <button
@@ -224,14 +364,6 @@ export const AuditLogsView: React.FC = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Actualizar</span>
             </button>
-          </div>
-        </div>
-
-        {/* Nota legal / informativa */}
-        <div className="mt-4 p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
-          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <strong>Garantía de Integridad:</strong> Todos los eventos son registrados cronológicamente en la base de datos PostgreSQL de Supabase protegidos por el disparador inmutable municipal. Cada registro documenta el responsable, la acción exacta, la fecha y la dirección IP de conexión.
           </div>
         </div>
 
@@ -269,7 +401,7 @@ export const AuditLogsView: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar usuario, plaza, crotal, acción..."
+              placeholder="Buscar por usuario, acción o detalles..."
               className="w-full text-xs pl-9 pr-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
@@ -297,16 +429,16 @@ export const AuditLogsView: React.FC = () => {
                   <th className="py-3 px-4 whitespace-nowrap">Fecha y Hora</th>
                   <th className="py-3 px-3 whitespace-nowrap">Responsable</th>
                   <th className="py-3 px-3 whitespace-nowrap">Acción</th>
-                  <th className="py-3 px-3 whitespace-nowrap">Elemento Afectado</th>
-                  <th className="py-3 px-4">Detalles de la Operación</th>
-                  <th className="py-3 px-3 text-center whitespace-nowrap">IP</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Elemento</th>
+                  <th className="py-3 px-4">Descripción de la Operación</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {currentLogs.map((log) => {
                   const badge = getActionBadge(log.accion);
                   const isExpanded = expandedLogId === log.id;
-                  const { summary, full } = parseDetailsSummary(log.detallesJson);
+                  const elem = getFriendlyElement(log);
+                  const { summary, full } = parseDetailsSummary(log);
 
                   return (
                     <React.Fragment key={log.id}>
@@ -341,36 +473,36 @@ export const AuditLogsView: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Entidad */}
+                        {/* Elemento amigable (SIN IDs TÉCNICOS) */}
                         <td className="py-3 px-3 whitespace-nowrap">
-                          <span className="font-bold text-gray-800">{log.entidad}</span>
-                          {log.entidadId && (
-                            <span className="block font-mono text-[10px] text-gray-500 truncate max-w-[140px]">
-                              {log.entidadId}
+                          <span className="font-bold text-gray-800 block">{elem.principal}</span>
+                          {elem.secundario && (
+                            <span className="text-[11px] text-gray-500 font-normal truncate max-w-[200px] block">
+                              {elem.secundario}
                             </span>
                           )}
                         </td>
 
-                        {/* Resumen de detalles */}
-                        <td className="py-3 px-4 text-gray-600">
+                        {/* Descripción clara y amigable */}
+                        <td className="py-3 px-4 text-gray-700">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate max-w-md block" title={summary}>
+                            <span className="truncate max-w-lg block font-medium" title={summary}>
                               {summary}
                             </span>
                             {full && Object.keys(full).length > 0 && (
                               <button
                                 type="button"
                                 onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                                className="text-emerald-700 hover:text-emerald-900 text-[11px] font-bold shrink-0 flex items-center gap-0.5 cursor-pointer"
+                                className="text-emerald-700 hover:text-emerald-900 text-[11px] font-bold shrink-0 flex items-center gap-0.5 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded transition"
                               >
                                 {isExpanded ? (
                                   <>
-                                    <span>Menos</span>
+                                    <span>Cerrar</span>
                                     <ChevronUp className="w-3 h-3" />
                                   </>
                                 ) : (
                                   <>
-                                    <span>Ver datos</span>
+                                    <span>Ver detalles</span>
                                     <ChevronDown className="w-3 h-3" />
                                   </>
                                 )}
@@ -378,24 +510,126 @@ export const AuditLogsView: React.FC = () => {
                             )}
                           </div>
                         </td>
-
-                        {/* IP */}
-                        <td className="py-3 px-3 text-center whitespace-nowrap font-mono text-[11px] text-gray-400">
-                          {log.ip || '-'}
-                        </td>
                       </tr>
 
-                      {/* Fila expandible con el desglose completo de detalles */}
+                      {/* Fila expandible con el desglose en lenguaje natural (NO JSON CRUDO) */}
                       {isExpanded && full && (
-                        <tr className="bg-gray-50 border-y border-emerald-200">
-                          <td colSpan={6} className="p-4">
-                            <div className="bg-white rounded-lg border border-gray-200 p-3 space-y-2 text-xs">
-                              <span className="font-bold text-gray-800 block text-[11px] uppercase tracking-wider">
-                                Desglose íntegro del registro de auditoría:
-                              </span>
-                              <pre className="bg-gray-50 p-2.5 rounded font-mono text-[11px] text-gray-800 overflow-x-auto max-h-48 border border-gray-100">
-                                {JSON.stringify(full, null, 2)}
-                              </pre>
+                        <tr className="bg-slate-50/80 border-y border-emerald-200">
+                          <td colSpan={5} className="p-4">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-2xs space-y-3">
+                              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                                <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                                  Detalles completos de la operación:
+                                </span>
+                                <span className="text-[11px] text-gray-400 font-mono">
+                                  {log.ip ? `Conexión desde IP: ${log.ip}` : ''}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                                {full.titulo && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Título de la Solicitud</span>
+                                    <span className="font-bold text-gray-900 mt-0.5 block">{full.titulo}</span>
+                                  </div>
+                                )}
+
+                                {full.destinatarios && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100 col-span-1 sm:col-span-2">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Destinatarios Enviados</span>
+                                    <span className="font-mono text-emerald-800 font-semibold mt-0.5 block break-all">
+                                      {Array.isArray(full.destinatarios) ? full.destinatarios.join(', ') : full.destinatarios}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {full.bcc && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100 col-span-1 sm:col-span-2">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Copia Oculta (BCC)</span>
+                                    <span className="font-mono text-gray-700 text-xs mt-0.5 block break-all">
+                                      {Array.isArray(full.bcc) ? full.bcc.join(', ') : full.bcc}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {full.nombre && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Nombre Completo</span>
+                                    <span className="font-bold text-gray-900 mt-0.5 block">{full.nombre}</span>
+                                  </div>
+                                )}
+
+                                {full.titular && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Ganadero Titular</span>
+                                    <span className="font-bold text-gray-900 mt-0.5 block">{full.titular}</span>
+                                  </div>
+                                )}
+
+                                {full.dni && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">DNI / CIF</span>
+                                    <span className="font-mono font-bold text-gray-900 mt-0.5 block">{full.dni}</span>
+                                  </div>
+                                )}
+
+                                {full.plaza && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Número de Plaza</span>
+                                    <span className="font-bold text-emerald-800 mt-0.5 block">{full.plaza}</span>
+                                  </div>
+                                )}
+
+                                {full.crotal && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Crotal / Microchip</span>
+                                    <span className="font-mono font-bold text-gray-800 mt-0.5 block">{full.crotal}</span>
+                                  </div>
+                                )}
+
+                                {full.tipo && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Tipo / Especie</span>
+                                    <span className="font-semibold text-gray-800 mt-0.5 block">{full.tipo}</span>
+                                  </div>
+                                )}
+
+                                {full.motivo && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Motivo</span>
+                                    <span className="font-medium text-gray-800 mt-0.5 block">{full.motivo}</span>
+                                  </div>
+                                )}
+
+                                {full.totalPersonas !== undefined && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Personas Autorizadas</span>
+                                    <span className="font-bold text-gray-800 mt-0.5 block">{full.totalPersonas} personas</span>
+                                  </div>
+                                )}
+
+                                {full.username && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Usuario Municipal</span>
+                                    <span className="font-mono font-bold text-gray-900 mt-0.5 block">@{full.username}</span>
+                                  </div>
+                                )}
+
+                                {full.rol && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Rol Asignado</span>
+                                    <span className="font-bold text-gray-800 mt-0.5 block">{full.rol}</span>
+                                  </div>
+                                )}
+
+                                {full.aUsuario && (
+                                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[11px] text-gray-500 font-bold block uppercase">Cambio de Sesión</span>
+                                    <span className="font-mono font-bold text-emerald-800 mt-0.5 block">Acceso como @{full.aUsuario}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
