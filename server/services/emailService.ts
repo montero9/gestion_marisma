@@ -1,5 +1,7 @@
 import nodemailer, { type SendMailOptions } from 'nodemailer';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import { SmtpConfig, EntradaRemesa, User } from '../../src/types/marisma.js';
 import { dataAdapter } from '../dataAdapter.js';
 
@@ -217,11 +219,88 @@ export async function sendEntradaEmail(params: {
     ? `${remesa.diasTexto} ${year}`
     : `${remesa.tituloOficial || 'Permisos'} ${year}`;
 
+  // Preparar lista de archivos adjuntos (hoja ODS principal + guías sanitarias y documentos de animales)
+  const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+    {
+      filename: cleanFileName,
+      content: odsBuffer,
+      contentType: 'application/vnd.oasis.opendocument.spreadsheet',
+    },
+  ];
+
+  // Recopilar guías y documentos adjuntos de cada animal incluido en la remesa
+  const attachedFilesSet = new Set<string>();
+  const attachedGuideNames: string[] = [];
+
+  if (Array.isArray(remesa.personas)) {
+    for (const persona of remesa.personas) {
+      if (Array.isArray(persona.animales)) {
+        for (const animal of persona.animales) {
+          if (animal.guiaArchivoUrl) {
+            const rawFilename = path.basename(animal.guiaArchivoUrl);
+            if (rawFilename && !attachedFilesSet.has(rawFilename)) {
+              attachedFilesSet.add(rawFilename);
+
+              let fileBuffer: Buffer | null = null;
+              // 1. Intentar descargar de Supabase Storage
+              try {
+                const { data, error } = await dataAdapter.downloadDocument(rawFilename);
+                if (data && !error) {
+                  const arrayBuffer = await data.arrayBuffer();
+                  fileBuffer = Buffer.from(arrayBuffer);
+                }
+              } catch (storageErr) {
+                console.warn(`[sendEntradaEmail] Error recuperando documento ${rawFilename} de storage:`, storageErr);
+              }
+
+              // 2. Si no se descargó de Storage, probar en almacenamiento local (uploads/documents)
+              if (!fileBuffer) {
+                try {
+                  const localPath = path.resolve(process.cwd(), 'uploads', 'documents', rawFilename);
+                  if (fs.existsSync(localPath)) {
+                    fileBuffer = fs.readFileSync(localPath);
+                  }
+                } catch (localErr) {
+                  console.warn(`[sendEntradaEmail] Error leyendo documento local ${rawFilename}:`, localErr);
+                }
+              }
+
+              if (fileBuffer) {
+                // Nombre legible para el archivo adjunto en el correo
+                const baseDisplayName = animal.guiaArchivoNombre || rawFilename;
+                let cleanDisplayName = baseDisplayName.replace(/[^\w.-]/g, '_');
+                if (!cleanDisplayName.toLowerCase().endsWith('.pdf') && !cleanDisplayName.toLowerCase().endsWith('.png') && !cleanDisplayName.toLowerCase().endsWith('.jpg')) {
+                  cleanDisplayName = `${cleanDisplayName}.pdf`;
+                }
+                const contentType = cleanDisplayName.toLowerCase().endsWith('.png')
+                  ? 'image/png'
+                  : cleanDisplayName.toLowerCase().endsWith('.jpg') || cleanDisplayName.toLowerCase().endsWith('.jpeg')
+                  ? 'image/jpeg'
+                  : 'application/pdf';
+
+                attachments.push({
+                  filename: cleanDisplayName,
+                  content: fileBuffer,
+                  contentType,
+                });
+                attachedGuideNames.push(cleanDisplayName);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   const subject = `Entradas Marisma- ${diasConAno}`;
 
   const textBody = `Buenas tardes.
 
-Adjunto a este email le hago llegar las entradas a la marisma de Hinojos para los días ${remesa.diasTexto || remesa.tituloOficial || ''} de ${year}.
+Adjunto a este email le hago llegar las entradas a la marisma de Hinojos para los días ${remesa.diasTexto || remesa.tituloOficial || ''} de ${year}${
+  attachedGuideNames.length > 0
+    ? ` junto con las ${attachedGuideNames.length} guías sanitarias y documentos oficiales correspondientes (${attachedGuideNames.join(', ')})`
+    : ''
+}.
 
 Saludos.
 `;
@@ -232,13 +311,7 @@ Saludos.
     bcc: bccList.length > 0 ? bccList : undefined,
     subject,
     text: textBody,
-    attachments: [
-      {
-        filename: cleanFileName,
-        content: odsBuffer,
-        contentType: 'application/vnd.oasis.opendocument.spreadsheet',
-      },
-    ],
+    attachments,
   };
 
   const info = await transporter.sendMail(mailOptions);

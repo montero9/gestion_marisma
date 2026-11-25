@@ -241,16 +241,24 @@ export const UsersView: React.FC<UsersViewProps> = ({
       )}
 
       {/* User Delete Confirmation Modal */}
-      {userToDelete && (
-        <UserDeleteModal
-          user={userToDelete}
-          isCurrentUser={userToDelete.id === currentUser.id}
-          canDelete={users.length > 1}
-          nextUser={users.find((u) => u.id !== userToDelete.id)}
-          onClose={() => setUserToDelete(null)}
-          onConfirm={() => handleConfirmDelete(userToDelete)}
-        />
-      )}
+      {userToDelete && (() => {
+        const otherAdmins = users.filter(
+          (u) => u.id !== userToDelete.id && u.rol === 'ADMINISTRADOR' && Boolean(u.activo)
+        );
+        const isLastAdmin = userToDelete.rol === 'ADMINISTRADOR' && otherAdmins.length === 0;
+        const canDelete = users.length > 1 && !isLastAdmin;
+        return (
+          <UserDeleteModal
+            user={userToDelete}
+            isCurrentUser={userToDelete.id === currentUser.id}
+            canDelete={canDelete}
+            isLastAdmin={isLastAdmin}
+            nextUser={users.find((u) => u.id !== userToDelete.id)}
+            onClose={() => setUserToDelete(null)}
+            onConfirm={() => handleConfirmDelete(userToDelete)}
+          />
+        );
+      })()}
     </div>
   );
 };
@@ -259,6 +267,7 @@ interface UserDeleteModalProps {
   user: User;
   isCurrentUser: boolean;
   canDelete: boolean;
+  isLastAdmin?: boolean;
   nextUser?: User;
   onClose: () => void;
   onConfirm: () => void;
@@ -268,6 +277,7 @@ const UserDeleteModal: React.FC<UserDeleteModalProps> = ({
   user,
   isCurrentUser,
   canDelete,
+  isLastAdmin = false,
   nextUser,
   onClose,
   onConfirm,
@@ -317,7 +327,9 @@ const UserDeleteModal: React.FC<UserDeleteModalProps> = ({
                 <span>No es posible eliminar este usuario</span>
               </div>
               <p className="text-xs text-amber-700 leading-relaxed">
-                Esta es la única cuenta registrada en el sistema. Para eliminar este usuario, primero crea o registra otro usuario que mantenga el acceso a la aplicación.
+                {isLastAdmin
+                  ? 'Esta cuenta es el único Administrador activo del sistema. Debe existir al menos un usuario con rol de Administrador para evitar el bloqueo del panel de control. Crea o asigna otro Administrador antes de eliminar esta cuenta.'
+                  : 'Esta es la única cuenta registrada en el sistema. Para eliminar este usuario, primero crea o registra otro usuario que mantenga el acceso a la aplicación.'}
               </p>
             </div>
           ) : (
@@ -408,6 +420,17 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, existingUsers, onCl
     if (isDuplicate) {
       alert(`El nombre de usuario "${cleanUser}" ya está en uso por otra cuenta. Por favor elija un nombre de usuario diferente.`);
       return;
+    }
+
+    // Comprobar que no se deje el sistema sin ningún administrador activo
+    if (user && user.rol === 'ADMINISTRADOR' && rol !== 'ADMINISTRADOR') {
+      const otherAdmins = existingUsers.filter(
+        (u) => u.id !== user.id && u.rol === 'ADMINISTRADOR' && Boolean(u.activo)
+      );
+      if (otherAdmins.length === 0) {
+        alert('No se puede cambiar el rol de este usuario. Debe existir al menos un usuario con rol de Administrador activo en el sistema para evitar el bloqueo de la aplicación.');
+        return;
+      }
     }
 
     if (!user && !password.trim()) {

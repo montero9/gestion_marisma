@@ -970,6 +970,26 @@ app.get('/api/users', requireAdmin, async (_req, res) => {
 app.post('/api/users', requireAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const { id, username, nombreCompleto, rol, cargo, email, avatarInitials, activo, password } = req.body;
+
+    // Protección: Garantizar que siempre exista al menos un Administrador activo en el sistema
+    if (id) {
+      const allUsers = await dataAdapter.getUsers();
+      const existingUser = allUsers.find((u) => u.id === id);
+      if (existingUser && existingUser.rol === 'ADMINISTRADOR') {
+        const isDemotingOrDeactivating = rol !== 'ADMINISTRADOR' || activo === false;
+        if (isDemotingOrDeactivating) {
+          const otherActiveAdmins = allUsers.filter(
+            (u) => u.id !== id && u.rol === 'ADMINISTRADOR' && Boolean(u.activo)
+          );
+          if (otherActiveAdmins.length === 0) {
+            return res.status(400).json({
+              error: 'Operación denegada: Debe existir al menos un usuario con rol de Administrador activo en el sistema para evitar el bloqueo de la aplicación.',
+            });
+          }
+        }
+      }
+    }
+
     const userId = id || `usr-${Date.now()}`;
     const userToSave: any = {
       id: userId,
@@ -995,6 +1015,19 @@ app.post('/api/users', requireAdmin, async (req: AuthenticatedRequest, res) => {
 
 app.delete('/api/users/:id', requireAdmin, async (req: AuthenticatedRequest, res) => {
   try {
+    const allUsers = await dataAdapter.getUsers();
+    const userToDelete = allUsers.find((u) => u.id === req.params.id);
+    if (userToDelete && userToDelete.rol === 'ADMINISTRADOR') {
+      const otherActiveAdmins = allUsers.filter(
+        (u) => u.id !== req.params.id && u.rol === 'ADMINISTRADOR' && Boolean(u.activo)
+      );
+      if (otherActiveAdmins.length === 0) {
+        return res.status(400).json({
+          error: 'Operación denegada: No se puede eliminar al único usuario con rol de Administrador activo del sistema.',
+        });
+      }
+    }
+
     await dataAdapter.deleteUser(req.params.id);
     await auditLog(req, 'ELIMINAR_USUARIO', 'USUARIO', req.params.id, {});
     res.json({ success: true, id: req.params.id });
@@ -1006,10 +1039,11 @@ app.delete('/api/users/:id', requireAdmin, async (req: AuthenticatedRequest, res
 // ==========================================
 // 10. AUDITORÍA
 // ==========================================
-app.get('/api/audit-logs', async (_req, res) => {
+app.get('/api/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res) => {
   try {
-    const logs = await dataAdapter.getAuditLogs();
-    res.json(logs);
+    const limit = parseInt((req.query.limit as string) || '500', 10);
+    const logs = await dataAdapter.getAuditLogs(limit);
+    res.json({ logs, total: logs.length });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

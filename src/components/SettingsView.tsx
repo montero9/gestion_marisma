@@ -32,6 +32,7 @@ import { ApiService } from '../services/apiService';
 import { UsersView } from './UsersView';
 import { SmtpConfigView } from './SmtpConfigView';
 import { BackupView } from './BackupView';
+import { AuditLogsView } from './AuditLogsView';
 
 interface SettingsViewProps {
   campaigns: string[];
@@ -54,7 +55,7 @@ interface SettingsViewProps {
   onOpenNewCampaignWizard?: (initialName?: string) => void;
 }
 
-export type SettingsSection = 'ESTADISTICAS' | 'CAMPANAS' | 'USUARIOS' | 'SMTP' | 'COPIA_SEGURIDAD' | 'CAMPANAS_BACKUP';
+export type SettingsSection = 'ESTADISTICAS' | 'CAMPANAS' | 'USUARIOS' | 'SMTP' | 'COPIA_SEGURIDAD' | 'AUDITORIA' | 'CAMPANAS_BACKUP';
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   campaigns,
@@ -79,7 +80,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
     try {
       const saved = localStorage.getItem('marisma_settings_section') as SettingsSection | null;
-      if (saved && ['ESTADISTICAS', 'CAMPANAS', 'USUARIOS', 'SMTP', 'COPIA_SEGURIDAD', 'CAMPANAS_BACKUP'].includes(saved)) {
+      if (saved && ['ESTADISTICAS', 'CAMPANAS', 'USUARIOS', 'SMTP', 'COPIA_SEGURIDAD', 'AUDITORIA', 'CAMPANAS_BACKUP'].includes(saved)) {
         const target = saved === 'CAMPANAS_BACKUP' ? 'CAMPANAS' : saved;
         if (currentUser.rol !== 'ADMINISTRADOR' && target !== 'ESTADISTICAS' && target !== 'CAMPANAS') {
           return 'ESTADISTICAS';
@@ -90,9 +91,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return 'ESTADISTICAS';
   });
 
-  // Si el usuario no es ADMINISTRADOR, no permitir secciones exclusivas de administración (USUARIOS, SMTP, COPIA_SEGURIDAD)
+  // Si el usuario no es ADMINISTRADOR, no permitir secciones exclusivas de administración (USUARIOS, SMTP, COPIA_SEGURIDAD, AUDITORIA)
   useEffect(() => {
-    const adminOnlySections: SettingsSection[] = ['USUARIOS', 'SMTP', 'COPIA_SEGURIDAD'];
+    const adminOnlySections: SettingsSection[] = ['USUARIOS', 'SMTP', 'COPIA_SEGURIDAD', 'AUDITORIA'];
     if (currentUser.rol !== 'ADMINISTRADOR' && adminOnlySections.includes(activeSection)) {
       setActiveSection('ESTADISTICAS');
       try {
@@ -709,6 +710,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Database className="w-4 h-4" />
                 <span>Copia de Seguridad</span>
               </button>
+
+              <button
+                onClick={() => handleSelectSection('AUDITORIA')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
+                  activeSection === 'AUDITORIA'
+                    ? 'bg-[#008744] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Registro de Auditoría</span>
+              </button>
             </>
           )}
         </div>
@@ -1274,6 +1287,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* SECTION 5: COPIA DE SEGURIDAD - Solo visible para ADMINISTRADOR */}
       {activeSection === 'COPIA_SEGURIDAD' && currentUser.rol === 'ADMINISTRADOR' && (
         <BackupView onReloadAllData={onReloadAllData} />
+      )}
+
+      {/* SECTION 6: REGISTRO DE AUDITORÍA - Solo visible para ADMINISTRADOR */}
+      {activeSection === 'AUDITORIA' && currentUser.rol === 'ADMINISTRADOR' && (
+        <AuditLogsView />
       )}
 
       {/* Asistente Modal de Creación de Campaña con Traspaso de Socios */}
