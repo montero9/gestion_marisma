@@ -51,7 +51,9 @@ app.use((req, res, next) => {
   }
 
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
@@ -60,9 +62,13 @@ app.use((req, res, next) => {
     ? "script-src 'self'"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
+  const frameAncestors = process.env.NODE_ENV === 'production'
+    ? "frame-ancestors 'self';"
+    : "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*;";
+
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' blob: data:; frame-ancestors 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;`
+    `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; ${frameAncestors} connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;`
   );
 
   next();
@@ -495,9 +501,16 @@ const handleDocumentDownload = async (req: AuthenticatedRequest, res: any) => {
     const arrayBuffer = await data.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    if (safeFilename.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
-    else if (safeFilename.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
-    else if (safeFilename.endsWith('.jpg') || safeFilename.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
+    if (safeFilename.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+    } else if (safeFilename.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+    } else if (safeFilename.endsWith('.jpg') || safeFilename.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+    }
 
     res.send(buffer);
   } catch (err: any) {

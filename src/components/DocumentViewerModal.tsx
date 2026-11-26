@@ -10,6 +10,7 @@ import {
   RotateCw,
   AlertCircle,
   Eye,
+  Loader2,
 } from 'lucide-react';
 import { apiClient } from '../services/apiClient';
 
@@ -35,6 +36,9 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 }) => {
   const [zoom, setZoom] = useState<number>(100);
   const [rotation, setRotation] = useState<number>(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Bloquear scroll de fondo mientras esté abierto
   useEffect(() => {
@@ -58,11 +62,76 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     };
   }, [isOpen, onClose]);
 
+  // Carga segura y local en memoria (Blob) para evitar bloqueos de orígenes / iframe
+  useEffect(() => {
+    if (!isOpen || !doc) {
+      setBlobUrl(null);
+      setIsLoading(false);
+      setLoadError(null);
+      return;
+    }
+
+    let active = true;
+    let createdUrl: string | null = null;
+
+    if (doc.fileData) {
+      setBlobUrl(doc.fileData);
+      setIsLoading(false);
+      setLoadError(null);
+      return;
+    }
+
+    if (doc.url) {
+      setIsLoading(true);
+      setLoadError(null);
+
+      const targetUrl = apiClient.getAuthenticatedUrl(doc.url);
+      fetch(targetUrl, {
+        headers: apiClient.getToken() ? { Authorization: `Bearer ${apiClient.getToken()}` } : {},
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`El servidor respondió con código ${response.status} (${response.statusText || 'Error al obtener el documento'})`);
+          }
+          const blob = await response.blob();
+          const isPdfFile =
+            (doc.nombre || '').toLowerCase().endsWith('.pdf') ||
+            (doc.url || '').toLowerCase().endsWith('.pdf');
+          const finalBlob =
+            isPdfFile && blob.type !== 'application/pdf'
+              ? new Blob([blob], { type: 'application/pdf' })
+              : blob;
+
+          if (active) {
+            createdUrl = URL.createObjectURL(finalBlob);
+            setBlobUrl(createdUrl);
+            setIsLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.warn('[DocumentViewerModal] Fallo al crear Blob URL, usando fallback:', err);
+          if (active) {
+            setBlobUrl(targetUrl);
+            setIsLoading(false);
+          }
+        });
+    }
+
+    return () => {
+      active = false;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [isOpen, doc]);
+
   if (!isOpen || !doc) return null;
 
   const resolvedUrl = doc.url
     ? apiClient.getAuthenticatedUrl(doc.url)
     : doc.fileData || '';
+
+  const activeUrl = blobUrl || resolvedUrl;
 
   const filename = (doc.nombre || '').toLowerCase();
   const urlLower = (doc.url || '').toLowerCase();
@@ -89,19 +158,16 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
   const handleDownload = () => {
     const a = window.document.createElement('a');
-    if (doc.url) {
+    if (activeUrl) {
+      a.href = activeUrl;
+      a.download = doc.nombre;
+      a.click();
+    } else if (doc.url) {
       a.href = apiClient.getAuthenticatedUrl(doc.url);
       a.target = '_blank';
-    } else if (doc.fileData) {
-      a.href = doc.fileData;
-    } else {
-      const blob = new Blob([`Documento oficial censo ganadero Hinojos: ${doc.nombre}`], {
-        type: 'text/plain',
-      });
-      a.href = URL.createObjectURL(blob);
+      a.download = doc.nombre;
+      a.click();
     }
-    a.download = doc.nombre;
-    a.click();
   };
 
   const handlePrint = () => {
@@ -113,14 +179,14 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           <html>
             <head><title>${doc.nombre}</title></head>
             <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-              <img src="${resolvedUrl}" style="max-width:100%;max-height:100vh;" onload="window.print();window.close();" />
+              <img src="${activeUrl}" style="max-width:100%;max-height:100vh;" onload="window.print();window.close();" />
             </body>
           </html>
         `);
         printWindow.document.close();
       }
-    } else {
-      window.open(resolvedUrl, '_blank');
+    } else if (activeUrl) {
+      window.open(activeUrl, '_blank');
     }
   };
 
@@ -224,17 +290,37 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
         {/* Contenido Visualizable */}
         <div className="flex-1 bg-slate-100/90 relative overflow-auto flex items-center justify-center p-2 sm:p-4">
-          {resolvedUrl ? (
+          {isLoading ? (
+            <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mx-auto mb-3" />
+              <p className="text-xs font-bold text-gray-700">Cargando documento oficial...</p>
+              <p className="text-[11px] text-gray-400 mt-1">Por favor espere un momento</p>
+            </div>
+          ) : loadError ? (
+            <div className="text-center p-8 bg-white rounded-2xl border border-rose-200 shadow-sm max-w-md">
+              <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+              <h4 className="font-bold text-gray-800 text-sm mb-1">No se pudo visualizar el documento</h4>
+              <p className="text-xs text-rose-600 mb-4">{loadError}</p>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Descargar archivo</span>
+              </button>
+            </div>
+          ) : activeUrl ? (
             isPdf ? (
               <iframe
-                src={`${resolvedUrl}#toolbar=1&navpanes=0`}
+                src={`${activeUrl}#toolbar=1&navpanes=0`}
                 title={doc.nombre}
                 className="w-full h-full rounded-xl bg-white shadow-inner border border-gray-200"
               />
             ) : isImage ? (
               <div className="w-full h-full flex items-center justify-center overflow-auto p-4">
                 <img
-                  src={resolvedUrl}
+                  src={activeUrl}
                   alt={doc.nombre}
                   style={{
                     transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
@@ -259,7 +345,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                     <span>Descargar archivo</span>
                   </button>
                   <a
-                    href={resolvedUrl}
+                    href={activeUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
