@@ -11,6 +11,7 @@ import { ApiService } from '../services/apiService';
 import { apiClient } from '../services/apiClient';
 import { dialogService } from '../services/dialogService';
 import { EnviandoEmailModal } from './EnviandoEmailModal';
+import { DocumentViewerModal, DocumentToView } from './DocumentViewerModal';
 import {
   X,
   Plus,
@@ -33,6 +34,7 @@ import {
   ExternalLink,
   ShieldAlert,
   ArrowLeft,
+  Eye,
 } from 'lucide-react';
 
 interface EntradaEditorModalProps {
@@ -146,6 +148,7 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
   });
   const isSending = sendingModalData.isOpen;
   const [uploadingAnimalId, setUploadingAnimalId] = useState<string | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<DocumentToView | null>(null);
 
   // Buscador de equinos
   const [animalSearchQuery, setAnimalSearchQuery] = useState('');
@@ -1364,17 +1367,45 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
                                         {/* Estado de Guía de Traslado */}
                                         <div className="pt-1">
                                           {ani.guiaArchivoUrl ? (
-                                            <a
-                                              href={apiClient.getAuthenticatedUrl(ani.guiaArchivoUrl)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900"
-                                            >
-                                              <Paperclip className="w-3 h-3" />
-                                              <span className="truncate max-w-[120px]">
-                                                {ani.guiaArchivoNombre || 'Guía Adjunta'}
-                                              </span>
-                                            </a>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setViewingDoc({
+                                                    nombre: ani.guiaArchivoNombre || `Guía Traslado - ${ani.plazaNumero || ani.identificacionChip || 'Equino'}`,
+                                                    url: ani.guiaArchivoUrl,
+                                                    tipo: 'GUIA_SANITARIA',
+                                                    tamano: 'Adjunto en Entrada',
+                                                  })
+                                                }
+                                                className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 hover:text-emerald-950 hover:underline cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 transition shadow-2xs"
+                                                title="Examinar guía adjunta en pantalla"
+                                              >
+                                                <Eye className="w-3 h-3 text-emerald-700 flex-shrink-0" />
+                                                <span className="truncate max-w-[120px]">
+                                                  {ani.guiaArchivoNombre || 'Ver Guía Adjunta'}
+                                                </span>
+                                              </button>
+
+                                              {!readOnly && (
+                                                <label
+                                                  className="p-1 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded cursor-pointer transition"
+                                                  title="Cambiar o volver a subir guía de traslado"
+                                                >
+                                                  <Upload className="w-3 h-3" />
+                                                  <input
+                                                    type="file"
+                                                    accept=".pdf,image/png,image/jpeg"
+                                                    disabled={uploadingAnimalId === ani.id}
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (file) handleUploadGuia(titular.id, ani, file);
+                                                    }}
+                                                  />
+                                                </label>
+                                              )}
+                                            </div>
                                           ) : !readOnly ? (
                                             <label className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer">
                                               <Upload className="w-3 h-3" />
@@ -1834,6 +1865,13 @@ export const EntradaEditorModal: React.FC<EntradaEditorModalProps> = ({
             onClose();
           }
         }}
+      />
+
+      {/* Visor Oficial de Documentos */}
+      <DocumentViewerModal
+        isOpen={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        document={viewingDoc}
       />
     </div>
   );

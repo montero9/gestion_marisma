@@ -64,9 +64,12 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     ? apiClient.getAuthenticatedUrl(doc.url)
     : doc.fileData || '';
 
-  const filename = doc.nombre.toLowerCase();
+  const filename = (doc.nombre || '').toLowerCase();
+  const urlLower = (doc.url || '').toLowerCase();
   const isPdf =
     filename.endsWith('.pdf') ||
+    urlLower.endsWith('.pdf') ||
+    urlLower.includes('.pdf?') ||
     doc.tipo?.toLowerCase().includes('pdf') ||
     doc.fileData?.startsWith('data:application/pdf');
   const isImage =
@@ -75,6 +78,13 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     filename.endsWith('.png') ||
     filename.endsWith('.webp') ||
     filename.endsWith('.svg') ||
+    urlLower.endsWith('.jpg') ||
+    urlLower.endsWith('.jpeg') ||
+    urlLower.endsWith('.png') ||
+    urlLower.endsWith('.webp') ||
+    urlLower.includes('.jpg?') ||
+    urlLower.includes('.jpeg?') ||
+    urlLower.includes('.png?') ||
     doc.fileData?.startsWith('data:image/');
 
   const handleDownload = () => {
@@ -116,7 +126,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-xs select-none animate-in fade-in duration-150"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-xs select-none animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
