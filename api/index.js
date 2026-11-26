@@ -75784,14 +75784,14 @@ app.use((req, res, next) => {
     return res.redirect(301, `https://${host}${req.url}`);
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   const scriptSrc = process.env.NODE_ENV === "production" ? "script-src 'self'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;`
+    `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' blob: data:; frame-ancestors 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co ws: wss:;`
   );
   next();
 });
@@ -75802,7 +75802,7 @@ app.use((0, import_cors.default)({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
     const isLocalDevelopment = process.env.NODE_ENV !== "production" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-    const isVercelDomain = /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin);
+    const isVercelDomain = /^https:\/\/(gestion-marisma[a-zA-Z0-9-]*|ayuntamiento-hinojos[a-zA-Z0-9-]*)\.vercel\.app$/.test(origin);
     if (isLocalDevelopment || configuredOrigins.has(origin) || isVercelDomain) {
       return callback(null, true);
     }
@@ -76495,8 +76495,8 @@ app.put("/api/users/me/active-campaign", async (req, res) => {
 app.post("/api/auth/change-password", async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: "La nueva contrase\xF1a debe tener al menos 6 caracteres" });
+    if (!newPassword || newPassword.length < 12) {
+      return res.status(400).json({ error: "La nueva contrase\xF1a debe tener al menos 12 caracteres" });
     }
     const user = await dataAdapter.getUserById(req.user.id);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
@@ -76712,6 +76712,10 @@ app.post("/api/admin/backup/restore-zip", requireAdmin, uploadZip.single("file")
         if (docName) {
           const docBuffer = await zipEntry.async("nodebuffer");
           const mimeType = docName.endsWith(".pdf") ? "application/pdf" : docName.endsWith(".png") ? "image/png" : "image/jpeg";
+          if (!hasValidSignature(docBuffer, mimeType)) {
+            console.warn(`[SEGURIDAD] Archivo ${docName} en backup ZIP omitido por firma binaria no v\xE1lida.`);
+            continue;
+          }
           await dataAdapter.uploadDocument(docName, docBuffer, mimeType);
           restoredDocs++;
         }
@@ -76734,7 +76738,8 @@ app.post("/api/admin/backup/restore-zip", requireAdmin, uploadZip.single("file")
 });
 app.get("/api/export/equinos-ods", async (req, res) => {
   try {
-    const campana = req.query.campana || "2025-2026";
+    const campanaRaw = req.query.campana || "2025-2026";
+    const campana = campanaRaw.replace(/[^\w.-]/g, "_");
     const [animals, owners, movements, stallions] = await Promise.all([
       dataAdapter.getAnimals(campana, "EQUINO"),
       dataAdapter.getOwners(campana),
@@ -76759,7 +76764,8 @@ app.get("/api/export/equinos-ods", async (req, res) => {
 });
 app.get("/api/export/bovinos-ods", async (req, res) => {
   try {
-    const campana = req.query.campana || "2025-2026";
+    const campanaRaw = req.query.campana || "2025-2026";
+    const campana = campanaRaw.replace(/[^\w.-]/g, "_");
     const [animals, owners] = await Promise.all([
       dataAdapter.getAnimals(campana, "BOVINO"),
       dataAdapter.getOwners(campana)
@@ -77000,7 +77006,7 @@ app.get("/api/entradas/animal/:animalId", async (req, res) => {
     res.status(500).json({ error: error2.message });
   }
 });
-app.get("/api/settings/smtp", async (_req, res) => {
+app.get("/api/settings/smtp", requireAdmin, async (_req, res) => {
   try {
     const config = await getSmtpConfig();
     res.json({
@@ -77012,7 +77018,7 @@ app.get("/api/settings/smtp", async (_req, res) => {
     res.status(500).json({ error: error2.message });
   }
 });
-app.post("/api/settings/smtp", async (req, res) => {
+app.post("/api/settings/smtp", requireAdmin, async (req, res) => {
   try {
     const { host, port, secure, user, pass, fromName, destinatarios, bcc } = req.body;
     if (host !== void 0) await dataAdapter.setSetting("entradas_smtp_host", host.trim());
@@ -77037,7 +77043,7 @@ app.post("/api/settings/smtp", async (req, res) => {
     res.status(500).json({ error: error2.message });
   }
 });
-app.post("/api/settings/smtp-test", async (req, res) => {
+app.post("/api/settings/smtp-test", requireAdmin, async (req, res) => {
   try {
     let { host, port, secure, user, pass, fromName, testRecipient } = req.body;
     if (!pass || pass === "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" || pass === "********") {
